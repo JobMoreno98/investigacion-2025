@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Sections\Schemas;
 
 use Filament\Schemas\Schema;
+use Filament\Tables\Columns\TextColumn;
 
 class SectionsInfolist
 {
@@ -10,7 +11,7 @@ class SectionsInfolist
     {
         return $schema
             ->components([
-                //
+                TextColumn::make('title')
             ]);
     }
 }

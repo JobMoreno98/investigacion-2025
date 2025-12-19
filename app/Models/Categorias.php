@@ -6,7 +6,11 @@ use Illuminate\Database\Eloquent\Model;
 
 class Categorias extends Model
 {
-        protected $guarded = [];
-    
+    protected $guarded = [];
+
+    public function secciones()
+    {
+        return $this->hasMany(Sections::class, 'categoria_id');
+    }
     //
 }

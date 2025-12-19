@@ -22,14 +22,25 @@ class StoreSurveyRequest extends FormRequest
     {
         $rules = [];
 
-        // 1. Obtenemos todas las preguntas (idealmente solo las de secciones activas)
-        // Podrías filtrar aquí: Question::where('is_active', true)->get();
-        $questions = Questions::all();
+        // 1. Validamos que los section_ids sean válidos primero (seguridad)
+        // Esto asegura que 'section_ids' sea un array y exista en la tabla sections
+        $rules['section_ids'] = 'required|array';
+        $rules['section_ids.*'] = 'exists:sections,id';
+
+        // 2. Obtenemos SOLO las preguntas de las secciones enviadas
+        $targetSections = $this->input('section_ids', []);
+
+        // AQUÍ ESTÁ LA MAGIA: Usamos whereIn
+        $questions = Questions::whereIn('section_id', $targetSections)
+            // Buena práctica: filtrar activas
+            ->get();
+
+
 
         foreach ($questions as $question) {
             // La clave que envía el HTML es answers[ID], para validación es answers.ID
             $fieldKey = 'answers.' . $question->id;
-            
+
             $fieldRules = [];
 
             // ---------------------------------------------------------
@@ -45,7 +56,7 @@ class StoreSurveyRequest extends FormRequest
             // B. Reglas según el Tipo de Pregunta
             // ---------------------------------------------------------
             switch ($question->type) {
-                
+
                 // --- TEXTO Y TEXTAREA ---
                 case 'text':
                 case 'textarea':
@@ -79,7 +90,7 @@ class StoreSurveyRequest extends FormRequest
                 // --- FECHAS (Con lógica dinámica de min/max) ---
                 case 'date':
                     $fieldRules[] = 'date';
-                    
+
                     // Si el admin configuró 'min_date' en Filament
                     if (!empty($question->options['min_date'])) {
                         // after_or_equal:today funciona nativamente en Laravel

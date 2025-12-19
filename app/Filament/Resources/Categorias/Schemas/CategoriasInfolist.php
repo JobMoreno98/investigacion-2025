@@ -2,7 +2,9 @@
 
 namespace App\Filament\Resources\Categorias\Schemas;
 
+use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Schema;
+use Filament\Tables\Columns\TextColumn;
 
 class CategoriasInfolist
 {
@@ -10,7 +12,7 @@ class CategoriasInfolist
     {
         return $schema
             ->components([
-                //
+                TextInput::make('titulo')
             ]);
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Answer;
 use App\Models\Categorias;
 use Illuminate\Http\Request;
 
@@ -10,10 +11,7 @@ class CategoriasController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
-    {
-        //
-    }
+    public function index() {}
 
     /**
      * Show the form for creating a new resource.
@@ -34,9 +32,10 @@ class CategoriasController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(Categorias $categorias)
+    public function show($id)
     {
-        //
+        $categoria = Categorias::with('secciones')->where('id', $id)->first();
+        return view('categorias.index', compact('categoria'));
     }
 
     /**

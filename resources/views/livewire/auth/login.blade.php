@@ -1,4 +1,4 @@
-<x-layouts.auth>
+<x-layouts.auth.split>
     <div class="flex flex-col gap-6">
         <x-auth-header :title="__('Log in to your account')" :description="__('Enter your email and password below to log in')" />
 
@@ -39,9 +39,6 @@
                 @endif
             </div>
 
-            <!-- Remember Me -->
-            <flux:checkbox name="remember" :label="__('Remember me')" :checked="old('remember')" />
-
             <div class="flex items-center justify-end">
                 <flux:button variant="primary" type="submit" class="w-full" data-test="login-button">
                     {{ __('Log in') }}
@@ -56,4 +53,4 @@
             </div>
         @endif
     </div>
-</x-layouts.auth>
+</x-layouts.auth.split>

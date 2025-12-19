@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use App\Http\Requests\StoreSurveyRequest;
 
 use App\Models\Entry;
+use App\Models\Sections;
 
 class AnswerController extends Controller
 {
@@ -21,9 +22,10 @@ class AnswerController extends Controller
     /**
      * Show the form for creating a new resource.
      */
-    public function create()
+    public function create($id)
     {
-        //
+        $seccion = Sections::with('questions')->where('id', $id)->first();
+        return view('respuestas.create', compact('seccion'));
     }
 
     /**
@@ -52,15 +54,16 @@ class AnswerController extends Controller
             ]);
         }
 
-        return back()->with('success', 'Enviado correctamente. Folio #' . $entry->id);
+        return back()->with('success', 'Enviado correctamente');
     }
 
     /**
      * Display the specified resource.
      */
-    public function show(Answer $answer)
+    public function show($id)
     {
-        //
+        $seccion = Sections::with('questions')->where('id', $id)->get();
+        return view('respuestas.create', compact('seccion'));
     }
 
     /**
