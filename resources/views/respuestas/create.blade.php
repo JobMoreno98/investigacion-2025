@@ -24,10 +24,11 @@
             {{-- IMPORTANTE: enctype es necesario para subir archivos --}}
             <form action="{{ route('answers.store') }}" method="POST" enctype="multipart/form-data" class="space-y-8">
                 @csrf
-                {{-- 1. Iteramos sobre las SECCIONES --}}
-                @foreach ($seccion as $section)
-                    <input type="hidden" name="section_ids[]" value="{{ $section->id }}">
-                    <div class="bg-white shadow rounded-lg p-6 border-t-4 border-blue-500">
+                <div class="bg-white shadow rounded-lg p-6 border-t-2 border-blue-500">
+                    {{-- 1. Iteramos sobre las SECCIONES --}}
+                    @foreach ($seccion as $section)
+                        <input type="hidden" name="section_ids[]" value="{{ $section->id }}">
+
                         <h2 class="text-xl font-semibold text-gray-800">{{ $section->title }}</h2>
                         @if ($section->description)
                             <p class="text-gray-500 text-sm mb-4">{{ $section->description }}</p>
@@ -88,10 +89,11 @@
                                         @case('select')
                                             <select name="{{ $fieldName }}"
                                                 class="text-stone-900 border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 w-full">
-                                                <option value="">Seleccione una opción...</option>
+                                                <option value="">Seleccione...</option>
 
-                                                @if ($question->options)
-                                                    @foreach ($question->options as $key => $label)
+                                                {{-- AHORA: Verificamos si existe 'choices' --}}
+                                                @if (isset($question->options['choices']))
+                                                    @foreach ($question->options['choices'] as $key => $label)
                                                         <option value="{{ $key }}"
                                                             {{ $oldValue == $key ? 'selected' : '' }}>
                                                             {{ $label }}
@@ -103,8 +105,29 @@
 
                                         {{-- ARCHIVO --}}
                                         @case('file')
-                                            <input type="file" name="{{ $fieldName }}"
+                                            @php
+                                                // Lógica de presentación:
+                                                // Convertimos "pdf,jpg" (formato validación) a ".pdf,.jpg" (formato HTML accept)
+                                                $acceptAttribute = '';
+
+                                                if (!empty($question->options['allowed_formats'])) {
+                                                    $formats = explode(',', $question->options['allowed_formats']);
+                                                    // Trim quita espacios, y agregamos el punto
+                                                    $formatted = array_map(fn($ext) => '.' . trim($ext), $formats);
+                                                    $acceptAttribute = implode(',', $formatted);
+                                                }
+                                            @endphp
+
+                                            <input type="file" name="{{ $fieldName }}" accept="{{ $acceptAttribute }}"
+                                                {{-- Aquí va el atributo mágico --}}
                                                 class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+
+                                            {{-- Ayuda visual para el usuario --}}
+                                            @if ($acceptAttribute)
+                                                <p class="text-xs text-gray-400 mt-1">
+                                                    Formatos aceptados: {{ $question->options['allowed_formats'] }}
+                                                </p>
+                                            @endif
                                         @break
                                     @endswitch
 
@@ -115,15 +138,14 @@
                                 </div>
                             @endforeach
                         </div>
-                    </div>
-                @endforeach
+                    @endforeach
 
-                <div class="flex justify-end">
-                    <button type="submit"
-                        class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded shadow-lg transition duration-150">
-                        Enviar Respuestas
-                    </button>
-                </div>
+                    <div class="flex justify-center mt-4">
+                        <button type="submit"
+                            class="bg-blue-600 text-xs hover:bg-blue-700 text-white font-bold py-1 px-4 rounded shadow-lg transition duration-150">
+                            Guardar
+                        </button>
+                    </div>
             </form>
         </div>
 </x-layouts.app>

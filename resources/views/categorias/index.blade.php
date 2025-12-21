@@ -8,15 +8,15 @@
 
         @foreach ($categoria->secciones as $key => $value)
             <div class="p-3 my-4 text-stone-900 rounded-sm border-1 border-b-indigo-500">
-                {{ $value->title }} <br> <x-flux::button size="xs" :href="route('answers.show', $value->id)"> Agregar 
-                    <flux:icon name="plus" variant="micro"/>
+                {{ $value->title }} <br>
+                <x-flux::button size="xs" :href="route('answers.show', $value->id)"> Agregar
+                    <flux:icon name="plus" variant="micro" />
                 </x-flux::button>
                 <div class="p-6">
                     @php
                         // Usamos el accessor que creamos en el modelo
                         $entries = $value->user_entries;
                     @endphp
-
                     @if ($entries->count() > 0)
                         <ul class="divide-y divide-gray-100">
                             @foreach ($entries as $entry)
@@ -39,23 +39,37 @@
                                         </span>
                                     </div>
 
-                                    <div class="flex space-x-3">
-                                        {{-- Botón Editar --}}
-                                        <a href="{{ route('answers.edit', $entry->id) }}"
-                                            class="text-indigo-600 hover:text-indigo-900 text-sm font-medium">
-                                            Editar
-                                        </a>
 
-                                        {{-- Botón Eliminar --}}
-                                        <form action="{{ route('answers.destroy', $entry->id) }}" method="POST"
-                                            onsubmit="return confirm('¿Eliminar este registro?');">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit"
-                                                class="text-red-600 hover:text-red-900 text-sm font-medium">
-                                                Eliminar
-                                            </button>
-                                        </form>
+                                    <div class="flex space-x-3">
+                                        <div class="flex space-x-3">
+                                            <a href="{{ route('answers.edit', $entry->id) }}"
+                                                class="text-black-600 hover:text-indigo-900 text-sm font-medium">
+                                                <flux:icon.printer variant="mini" />
+                                            </a>
+                                            @if ($entry->is_editable)
+                                                {{-- Botones Activos --}}
+                                                {{-- Botón Editar --}}
+                                                <a href="{{ route('answers.edit', $entry->id) }}"
+                                                    class="text-indigo-600 hover:text-indigo-900 text-sm font-medium">
+                                                    <flux:icon.pencil variant="mini" />
+                                                </a>
+
+
+                                                {{-- Botón Eliminar --}}
+                                                <form action="{{ route('answers.destroy', $entry->id) }}" method="POST"
+                                                    onsubmit="return confirm('¿Eliminar este registro?');">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit"
+                                                        class="text-red-600 hover:text-red-900 text-sm font-medium">
+                                                        <flux:icon.trash variant="mini" />
+                                                    </button>
+                                                </form>
+                                            @endif
+                                        </div>
+
+
+
                                     </div>
                                 </li>
                             @endforeach

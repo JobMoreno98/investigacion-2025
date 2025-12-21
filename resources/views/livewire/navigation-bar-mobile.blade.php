@@ -1,9 +1,9 @@
-<flux:navlist variant="outline">
-
+<flux:navlist.group :heading="__('Platform')" class="grid">
     @foreach ($enlaces as $link)
-        <flux:navlist.item href="{{ route('categorias.show', $link->id) }}" >
-            {{ $link->titulo }}
+        <flux:navlist.item :href="route('categorias.show', $link->id)" wire:navigate x-on:click="$dispatch('close-sidebar')">
+            <span class="block whitespace-normal break-words">
+                {{ $link->titulo }}
+            </span>
         </flux:navlist.item>
     @endforeach
-
-</flux:navlist>
+</flux:navlist.group>

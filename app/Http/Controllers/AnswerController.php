@@ -2,10 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Answer;
-use Illuminate\Http\Request;
 use App\Http\Requests\StoreSurveyRequest;
-
+use App\Models\Answer;
 use App\Models\Entry;
 use App\Models\Sections;
 
@@ -25,6 +23,7 @@ class AnswerController extends Controller
     public function create($id)
     {
         $seccion = Sections::with('questions')->where('id', $id)->first();
+
         return view('respuestas.create', compact('seccion'));
     }
 
@@ -63,23 +62,102 @@ class AnswerController extends Controller
     public function show($id)
     {
         $seccion = Sections::with('questions')->where('id', $id)->get();
+
         return view('respuestas.create', compact('seccion'));
     }
 
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(Answer $answer)
+    public function edit($id)
     {
-        //
+
+        $entry = Entry::with(['answers.question', 'answers'])->findOrFail($id);
+
+        // 2. Seguridad: Verificar que el entry pertenece al usuario logueado
+        if ($entry->user_id !== auth()->id()) {
+            abort(403, 'No tienes permiso para editar este registro.');
+        }
+        if (! $entry->is_editable) {
+            return redirect()->route('dashboard')
+                ->with('error', 'Este formulario ya fue enviado y no puede ser modificado.');
+        }
+
+        // 3. Identificar la Sección
+        // Asumimos que todas las respuestas de un entry son de la misma sección.
+        // Tomamos la sección de la primera respuesta encontrada.
+
+        $firstAnswer = $entry->answers->first();
+        $sectionId = $firstAnswer ? $firstAnswer->question->section_id : null;
+
+        if (! $sectionId) {
+            return back()->with('error', 'Registro corrupto o vacío');
+        }
+
+        // 4. Cargar la estructura del formulario (Preguntas)
+        $seccion = Sections::where('id', $sectionId)
+            ->with(['questions' => fn ($q) => $q->orderBy('sort_order')])
+            ->first();
+
+        // 5. TRUCO PRO: Mapear respuestas para acceso rápido en la vista
+        // Resultado: [ ID_PREGUNTA => 'Valor de la respuesta' ]
+        $existingAnswers = $entry->answers->pluck('value', 'question_id')->toArray();
+
+        return view('respuestas.edit', compact('entry', 'seccion', 'existingAnswers'));
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Answer $answer)
+    public function update(StoreSurveyRequest $request, $id)
     {
-        //
+        $entry = Entry::findOrFail($id);
+        if (! $entry->is_editable) {
+            abort(403, 'El registro está bloqueado.');
+        }
+        // Seguridad
+        if ($entry->user_id !== auth()->id()) {
+            abort(403);
+        }
+
+        $validated = $request->validated();
+
+        foreach ($validated['answers'] as $questionId => $value) {
+
+            // Lógica especial para Archivos en Edición
+            if ($request->hasFile("answers.{$questionId}")) {
+                // 1. Subir nuevo archivo
+                $path = $request->file("answers.{$questionId}")->store('uploads', 'public');
+                $value = $path;
+
+                // Opcional: Borrar archivo viejo si existe (usando Storage::delete)
+            } elseif ($value === null) {
+                // Si es un archivo y viene null (no subieron nada nuevo),
+                // saltamos este ciclo para NO borrar la respuesta existente en la BD.
+                // Esto asume que el input file no envía nada si no se toca.
+                // Para inputs de texto que el usuario borró, sí queremos guardar null o vacío.
+
+                $questionType = Questions::find($questionId)->type;
+                if ($questionType === 'file') {
+                    continue;
+                }
+            }
+
+            // USAMOS UpdateOrCreate
+            // Busca si ya existe una respuesta para este entry y esta pregunta.
+            // Si existe, actualiza el valor. Si no (ej: pregunta nueva), la crea.
+            Answer::updateOrCreate(
+                [
+                    'entry_id' => $entry->id,
+                    'question_id' => $questionId,
+                ],
+                [
+                    'value' => $value,
+                ]
+            );
+        }
+
+        return redirect()->route('dashboard')->with('success', 'Registro actualizado correctamente.');
     }
 
     /**

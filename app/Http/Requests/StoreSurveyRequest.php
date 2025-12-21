@@ -2,8 +2,8 @@
 
 namespace App\Http\Requests;
 
-use Illuminate\Foundation\Http\FormRequest;
 use App\Models\Questions;
+use Illuminate\Foundation\Http\FormRequest;
 
 class StoreSurveyRequest extends FormRequest
 {
@@ -35,11 +35,9 @@ class StoreSurveyRequest extends FormRequest
             // Buena práctica: filtrar activas
             ->get();
 
-
-
         foreach ($questions as $question) {
             // La clave que envía el HTML es answers[ID], para validación es answers.ID
-            $fieldKey = 'answers.' . $question->id;
+            $fieldKey = 'answers.'.$question->id;
 
             $fieldRules = [];
 
@@ -64,42 +62,52 @@ class StoreSurveyRequest extends FormRequest
                     $fieldRules[] = 'max:65535';
                     break;
 
-                // --- NÚMERO ---
+                    // --- NÚMERO ---
                 case 'number':
                     $fieldRules[] = 'numeric';
                     break;
 
-                // --- SELECT / LISTA ---
+                    // --- SELECT / LISTA ---
                 case 'select':
-                    // Validamos que lo que envían sea una de las llaves definidas en el JSON
-                    if (!empty($question->options)) {
-                        // array_keys obtiene los IDs o valores que definiste en Filament
-                        $validKeys = implode(',', array_keys($question->options));
-                        $fieldRules[] = 'in:' . $validKeys;
+                    // Antes: if (!empty($question->options)) ...
+                    // AHORA: Buscamos dentro de 'choices'
+                    if (! empty($question->options['choices'])) {
+                        $validKeys = implode(',', array_keys($question->options['choices']));
+                        $fieldRules[] = 'in:'.$validKeys;
                     }
                     break;
 
-                // --- ARCHIVOS ---
+                    // --- ARCHIVOS ---
                 case 'file':
                     $fieldRules[] = 'file';
-                    $fieldRules[] = 'max:10240'; // Máximo 10MB
-                    // Opcional: restringir tipos
-                    // $fieldRules[] = 'mimes:pdf,jpg,png,doc,docx'; 
+                    $fieldRules[] = 'max:10240'; // 10MB default
+
+                    // LÓGICA NUEVA: Formatos personalizados
+                    if (! empty($question->options['allowed_formats'])) {
+                        // Limpiamos espacios en blanco por si el admin escribió "pdf, jpg"
+                        $formats = str_replace(' ', '', $question->options['allowed_formats']);
+
+                        // Agregamos la regla mimes:pdf,jpg,png
+                        $fieldRules[] = 'mimes:'.$formats;
+                    } else {
+                        // Opcional: Si el admin lo deja vacío, ¿quieres permitir todo o poner un default?
+                        // $fieldRules[] = 'mimes:pdf,jpg,png,doc,docx,xls,xlsx';
+                    }
                     break;
 
-                // --- FECHAS (Con lógica dinámica de min/max) ---
+                    // --- FECHAS (Con lógica dinámica de min/max) ---
                 case 'date':
                     $fieldRules[] = 'date';
 
                     // Si el admin configuró 'min_date' en Filament
-                    if (!empty($question->options['min_date'])) {
+                    if (! empty($question->options['min_date'])) {
                         // after_or_equal:today funciona nativamente en Laravel
-                        $fieldRules[] = 'after_or_equal:' . $question->options['min_date'];
+                        $fieldRules[] = 'after_or_equal:'.$question->options['min_date'];
                     }
 
                     // Si el admin configuró 'max_date' en Filament
-                    if (!empty($question->options['max_date'])) {
-                        $fieldRules[] = 'before_or_equal:' . $question->options['max_date'];
+                    if (! empty($question->options['max_date'])) {
+                        $fieldRules[] = 'before_or_equal:'.$question->options['max_date'];
                     }
                     break;
             }
@@ -122,7 +130,7 @@ class StoreSurveyRequest extends FormRequest
         $questions = Questions::all();
 
         foreach ($questions as $question) {
-            $attributes['answers.' . $question->id] = $question->label;
+            $attributes['answers.'.$question->id] = $question->label;
         }
 
         return $attributes;

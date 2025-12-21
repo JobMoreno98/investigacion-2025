@@ -12,14 +12,14 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('entries', function (Blueprint $table) {
-$table->id();
-            
+            $table->id();
+
             // Quién hizo el envío. Nullable para encuestas anónimas.
             $table->foreignId('user_id')->nullable()->constrained()->nullOnDelete();
-            
-            // Opcional: Si en el futuro tienes múltiples formularios diferentes, 
+
+            // Opcional: Si en el futuro tienes múltiples formularios diferentes,
             // aquí podrías agregar un 'form_id'. Por ahora no parece necesario.
-            
+
             // Timestamps guarda automáticamente cuándo se creó el envío (created_at)
             $table->timestamps();
         });

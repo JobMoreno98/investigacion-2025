@@ -37,9 +37,15 @@ class SectionsForm
                         ])
                         ->reactive() // Para mostrar/ocultar opciones
                         ->required(),
+                    // Agrega esto debajo del selector de tipo
+                    TextInput::make('options.allowed_formats')
+                        ->label('Formatos permitidos')
+                        ->placeholder('ej: pdf, jpg, png, docx')
+                        ->helperText('Escribe las extensiones separadas por coma.')
+                        ->visible(fn ($get) => $get('type') === 'file'),
 
                     // Este campo solo aparece si el tipo es 'select'
-                    KeyValue::make('options')->label('Opciones del Select')->keyLabel('Valor (ID)')->valueLabel('Texto a mostrar')->hidden(fn ($get) => $get('type') !== 'select'),
+                    KeyValue::make('options.choices')->label('Opciones del Select')->keyLabel('Valor (ID)')->valueLabel('Texto a mostrar')->hidden(fn ($get) => $get('type') !== 'select'),
 
                     Toggle::make('is_required'),
                 ])

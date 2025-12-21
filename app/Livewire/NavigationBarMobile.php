@@ -10,8 +10,8 @@ class NavigationBarMobile extends Component
     public function render()
     {
         return view(
-            'livewire.navigation-bar',
-            ['enlaces' => Categorias::all()]
+            'livewire.navigation-bar-mobile',
+            ['enlaces' => Categorias::orderBy('titulo')->get()]
         );
     }
 }

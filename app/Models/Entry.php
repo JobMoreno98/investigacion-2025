@@ -7,7 +7,10 @@ use Illuminate\Database\Eloquent\Model;
 class Entry extends Model
 {
     protected $guarded = [];
-    
+
+    protected $casts = [
+        'is_editable' => 'boolean',
+    ];
 
     public function answers()
     {
