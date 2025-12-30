@@ -32,7 +32,7 @@ class StoreSurveyRequest extends FormRequest
 
         // AQUÍ ESTÁ LA MAGIA: Usamos whereIn
         $questions = Questions::whereIn('section_id', $targetSections)
-            // Buena práctica: filtrar activas
+            //->where('is_active', true)
             ->get();
 
         foreach ($questions as $question) {
@@ -44,10 +44,8 @@ class StoreSurveyRequest extends FormRequest
             // ---------------------------------------------------------
             // A. Regla Base: Requerido o Nullable
             // ---------------------------------------------------------
-            if ($question->is_required) {
-                $fieldRules[] = 'required';
-            } else {
-                $fieldRules[] = 'nullable';
+            if ($question->type !== 'file') {
+                $fieldRules[] = $question->is_required ? 'required' : 'nullable';
             }
 
             // ---------------------------------------------------------
@@ -71,8 +69,10 @@ class StoreSurveyRequest extends FormRequest
                 case 'select':
                     // Antes: if (!empty($question->options)) ...
                     // AHORA: Buscamos dentro de 'choices'
-                    if (! empty($question->options['choices'])) {
-                        $validKeys = implode(',', array_keys($question->options['choices']));
+                    $choices = $question->options['choices'] ?? [];
+
+                    if (! empty($choices)) {
+                        $validKeys = implode(',', array_keys($choices));
                         $fieldRules[] = 'in:'.$validKeys;
                     }
                     break;
@@ -80,18 +80,27 @@ class StoreSurveyRequest extends FormRequest
                     // --- ARCHIVOS ---
                 case 'file':
                     $fieldRules[] = 'file';
-                    $fieldRules[] = 'max:10240'; // 10MB default
+                    $fieldRules[] = 'max:10240';
 
-                    // LÓGICA NUEVA: Formatos personalizados
-                    if (! empty($question->options['allowed_formats'])) {
-                        // Limpiamos espacios en blanco por si el admin escribió "pdf, jpg"
-                        $formats = str_replace(' ', '', $question->options['allowed_formats']);
+                    // Lógica de Edición vs Creación
+                    if ($this->isMethod('put') || $this->isMethod('patch')) {
+                        // Al editar, siempre es opcional (para no obligar a resubir)
+                        $fieldRules[] = 'nullable';
+                    } else {
+                        // Al crear, respetamos si es required
+                        $fieldRules[] = $question->is_required ? 'required' : 'nullable';
+                    }
 
-                        // Agregamos la regla mimes:pdf,jpg,png
+                    // CORRECCIÓN DE SEGURIDAD:
+                    // Usamos '??' para evitar error si 'allowed_formats' no existe
+                    $allowedFormats = $question->options['allowed_formats'] ?? null;
+
+                    if (! empty($allowedFormats)) {
+                        $formats = str_replace(' ', '', $allowedFormats);
                         $fieldRules[] = 'mimes:'.$formats;
                     } else {
-                        // Opcional: Si el admin lo deja vacío, ¿quieres permitir todo o poner un default?
-                        // $fieldRules[] = 'mimes:pdf,jpg,png,doc,docx,xls,xlsx';
+                        // Default seguro
+                        $fieldRules[] = 'mimes:pdf';
                     }
                     break;
 

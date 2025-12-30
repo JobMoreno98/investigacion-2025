@@ -124,21 +124,20 @@ class AnswerController extends Controller
 
         foreach ($validated['answers'] as $questionId => $value) {
 
+            $question = \App\Models\Questions::find($questionId);
             // Lógica especial para Archivos en Edición
-            if ($request->hasFile("answers.{$questionId}")) {
-                // 1. Subir nuevo archivo
-                $path = $request->file("answers.{$questionId}")->store('uploads', 'public');
-                $value = $path;
+            if ($question->type === 'file') {
 
-                // Opcional: Borrar archivo viejo si existe (usando Storage::delete)
-            } elseif ($value === null) {
-                // Si es un archivo y viene null (no subieron nada nuevo),
-                // saltamos este ciclo para NO borrar la respuesta existente en la BD.
-                // Esto asume que el input file no envía nada si no se toca.
-                // Para inputs de texto que el usuario borró, sí queremos guardar null o vacío.
-
-                $questionType = Questions::find($questionId)->type;
-                if ($questionType === 'file') {
+                // A. ¿El usuario subió un archivo nuevo?
+                if ($request->hasFile("answers.{$questionId}")) {
+                    // Subimos y actualizamos la variable $value con la ruta
+                    $path = $request->file("answers.{$questionId}")->store('uploads', 'public');
+                    $value = $path;
+                }
+                // B. ¿No subió nada?
+                else {
+                    // IMPORTANTE: Si es archivo y no enviaron nada nuevo,
+                    // saltamos el ciclo para NO sobrescribir con NULL la BD.
                     continue;
                 }
             }
@@ -157,7 +156,7 @@ class AnswerController extends Controller
             );
         }
 
-        return redirect()->route('dashboard')->with('success', 'Registro actualizado correctamente.');
+        return redirect()->route('answers.edit', $entry->id)->with('success', 'Registro actualizado correctamente.');
     }
 
     /**

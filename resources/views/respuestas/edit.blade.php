@@ -21,12 +21,10 @@
 
             <form action="{{ route('answers.update', $entry->id) }}" method="POST" enctype="multipart/form-data">
                 @csrf
-                @method('PUT') {{-- Importante para update --}}
+                @method('PUT')
                 <div class="bg-white shadow rounded-lg p-6 border-t-2 border-blue-500">
-                    {{-- Enviamos el ID de sección para la validación (StoreSurveyRequest) --}}
-                    <input type="hidden" name="section_ids[]" value="{{ $seccion->id }}">
 
-                    {{-- ... Título de sección ... --}}
+                    <input type="hidden" name="section_ids[]" value="{{ $seccion->id }}">
 
                     @foreach ($seccion->questions as $question)
                         @php
@@ -40,8 +38,7 @@
 
                             @switch($question->type)
                                 @case('text')
-                                    <input type="text" name="{{ $fieldName }}" {{-- El segundo parámetro de old() es el valor por defecto (BD) --}}
-                                        value="{{ old($errorKey, $dbValue) }}"
+                                    <input type="text" name="{{ $fieldName }}" value="{{ old($errorKey, $dbValue) }}"
                                         class="border-gray-300 text-stone-900 rounded-md shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 w-full">
                                 @break
 
@@ -55,12 +52,12 @@
                                         class="text-stone-900 border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 w-full">
                                         <option value="">Seleccione...</option>
                                         @forelse ($question->options['choices'] as $key => $label)
-                                            <option value="{{ $key }}" {{-- Comparamos contra old() O contra el valor de BD --}}
+                                            <option value="{{ $key }}"
                                                 {{ old($errorKey, $dbValue) == $key ? 'selected' : '' }}>
                                                 {{ $label }}
                                             </option>
                                         @empty
-                                            <option>    </option>
+                                            <option> </option>
                                         @endforelse
 
                                     </select>
