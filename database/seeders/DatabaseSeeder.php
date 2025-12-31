@@ -30,6 +30,8 @@ class DatabaseSeeder extends Seeder
         ]);
         $this->call(GeneralDataSeeder::class);
         $this->call(DataSeeder::class);
+        $this->call(ProgramasAcademicosSeeder::class);
+        $this->call(DivisionesDepartamentosSeeder::class);
         
     }
 }

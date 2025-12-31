@@ -15,7 +15,7 @@ class CatalogItemsTable
 {
     public static function configure(Table $table): Table
     {
-        return $table
+        return $table->searchable()
             ->columns([
                 TextColumn::make('catalog_type')
                     ->label('Catálogo')

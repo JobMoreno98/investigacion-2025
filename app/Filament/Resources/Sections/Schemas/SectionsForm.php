@@ -3,8 +3,6 @@
 namespace App\Filament\Resources\Sections\Schemas;
 
 use App\Models\CatalogItem;
-use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\KeyValue;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -18,8 +16,8 @@ class SectionsForm
     public static function configure(Schema $schema): Schema
     {
         return $schema->components([
-            TextInput::make('title')->required(),
-            TextInput::make('description'),
+            TextInput::make('title')->required()->label('Título'),
+            TextInput::make('description')->label('Descripción'),
             Select::make('categoria_id')
                 ->relationship(name: 'categorias', titleAttribute: 'titulo'),
             Toggle::make('is_repeatable')
@@ -28,8 +26,9 @@ class SectionsForm
                 ->helperText('Actívalo para secciones como "Estudios". Desactívalo para "Datos Generales" (solo llenan una vez).'),
 
             // Aquí gestionamos las preguntas de esta sección
-            Repeater::make('questions')->addActionLabel('Añadir pregunta')->collapsed()->itemLabel(fn(array $state): ?string => $state['label'] ?? null)
+            Repeater::make('questions')->addActionLabel('Añadir pregunta')->collapsed()->itemLabel(fn (array $state): ?string => $state['label'] ?? null)
                 ->columnSpan(2)
+                ->label('Preguntas')
                 ->reorderableWithButtons()
                 ->columns(2)
                 ->relationship() // Usa la relación hasMany
@@ -39,13 +38,14 @@ class SectionsForm
 
                     Select::make('type')
                         ->options([
-                            'number' => 'Número',
                             'text' => 'Texto Corto',
                             'textarea' => 'Texto Largo',
+                            'number' => 'Número',
                             'select' => 'Lista Desplegable',
                             'file' => 'Archivo',
                             'date' => 'Fecha',
                             'catalog' => 'Lista de Catalogos',
+                            'sub_form' => 'Insertar Otra Sección (Sub-Formulario)',
                         ])
                         ->reactive() // Para mostrar/ocultar opciones
                         ->required(),
@@ -54,7 +54,7 @@ class SectionsForm
                         ->label('Formatos permitidos')
                         ->placeholder('ej: pdf, jpg, png, docx')
                         ->helperText('Escribe las extensiones separadas por coma.')
-                        ->visible(fn($get) => $get('type') === 'file'),
+                        ->visible(fn ($get) => $get('type') === 'file'),
 
                     // Este campo solo aparece si el tipo es 'select'
                     Repeater::make('options.choices')
@@ -69,17 +69,17 @@ class SectionsForm
                                 ->required(),
                         ])
                         ->columns(2)
-                        //->grid(2) // Opcional: Para que se vean compactos
+                        // ->grid(2) // Opcional: Para que se vean compactos
                         ->defaultItems(1)
                         ->reorderableWithButtons() // O ->reorderable() simple
                         ->collapsible()
-                        ->itemLabel(fn(array $state): ?string => $state['label'] ?? null) // Pone el título en la barrita colapsada
-                        ->visible(fn($get) => $get('type') === 'select'),
+                        ->itemLabel(fn (array $state): ?string => $state['label'] ?? null) // Pone el título en la barrita colapsada
+                        ->visible(fn ($get) => $get('type') === 'select'),
 
                     Select::make('options.catalog_name')
                         ->label('Fuente de Datos')
                         ->helperText('Selecciona qué lista de la base de datos se cargará.')
-                        ->visible(fn($get) => $get('type') === 'catalog') // Solo visible si es tipo catálogo
+                        ->visible(fn ($get) => $get('type') === 'catalog') // Solo visible si es tipo catálogo
                         ->required()
                         ->searchable()
                         ->options(function () {
@@ -87,13 +87,19 @@ class SectionsForm
                             $universal = CatalogItem::query()
                                 ->distinct()
                                 ->pluck('catalog_type')
-                                ->mapWithKeys(fn($type) => [$type => Str::ucfirst($type)])
+                                ->mapWithKeys(fn ($type) => [$type => Str::ucfirst($type)])
                                 ->toArray();
-
 
                             // 3. Fusionamos ambos arrays para que el admin elija cualquiera
                             return $universal;
                         }),
+                    Select::make('options.target_section_id')
+                        ->label('Sección a Incrustar')
+                        ->helperText('Selecciona la sección genérica que quieres que aparezca aquí.')
+                        // Listamos todas las secciones NO repetibles (para simplificar)
+                        ->options(\App\Models\Sections::where('is_repeatable', false)->pluck('title', 'id'))
+                        ->required()
+                        ->visible(fn ($get) => $get('type') === 'sub_form'),
 
                     Section::make()->schema([
                         Toggle::make('is_required'),
@@ -102,7 +108,6 @@ class SectionsForm
                             ->helperText('Si activas esto, dos usuarios no podrán registrar el mismo valor.')
                             ->onColor('danger'),
                     ]),
-
 
                 ])
                 ->orderable('sort_order')

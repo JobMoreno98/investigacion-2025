@@ -7,8 +7,8 @@ use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ForceDeleteBulkAction;
 use Filament\Actions\RestoreBulkAction;
-use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
 
@@ -16,17 +16,21 @@ class SectionsTable
 {
     public static function configure(Table $table): Table
     {
-        return $table
+        return $table->searchable()
             ->columns([
-                TextColumn::make('title')->label('Título'),
-                TextColumn::make('description')->label('Descripción'),
-                TextColumn::make('categorias.titulo')->label('Categoria')
+                TextColumn::make('title')->label('Título')->searchable(),
+                // TextColumn::make('description')->label('Descripción')->wrap(),
+                TextColumn::make('categorias.titulo')->label('Categoria'),
             ])
             ->filters([
-                TrashedFilter::make(),
+                // TrashedFilter::make(),
+                SelectFilter::make('categoria_id')
+                    ->label('Filtrar por Categoría')
+                    ->relationship('categorias', 'titulo')
+                    ->searchable(),
+
             ])
             ->recordActions([
-                ViewAction::make(),
                 EditAction::make(),
             ])
             ->toolbarActions([

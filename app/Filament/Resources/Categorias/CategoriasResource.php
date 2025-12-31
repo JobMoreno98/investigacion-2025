@@ -50,8 +50,7 @@ class CategoriasResource extends Resource
     {
         return [
             'index' => ListCategorias::route('/'),
-            'create' => CreateCategorias::route('/create'),
-            'view' => ViewCategorias::route('/{record}'),
+            'create' => CreateCategorias::route('/create'),            
             'edit' => EditCategorias::route('/{record}/edit'),
         ];
     }

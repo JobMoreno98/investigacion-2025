@@ -20,6 +20,7 @@ class GeneralDataSeeder extends Seeder
                 'titulo' => 'Datos Generales',
             ]
         );
+        
         $section = Sections::firstOrCreate(
             ['title' => 'Datos Generales'], // Busca por título
             [
@@ -112,5 +113,7 @@ class GeneralDataSeeder extends Seeder
                 ]
             );
         }
+
+
     }
 }

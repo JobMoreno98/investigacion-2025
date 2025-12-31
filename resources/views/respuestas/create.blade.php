@@ -11,7 +11,7 @@
                     {{ session('success') }}
                 </div>
             @endif
-{{--  
+            {{--  
             @if ($errors->any())
                 <div class="alert alert-danger">
                     <ul>
@@ -173,7 +173,70 @@
                                                 </p>
                                             @endif
                                         @break
+
+                                        @case('sub_form')
+                                            @php
+                                                // 1. Identificamos qué sección incrustar
+                                                $targetSectionId = $question->options['target_section_id'];
+
+                                                // 2. Buscamos las preguntas de esa sección (Mejor si las pasas desde el controlador para optimizar)
+                                                $childSection = \App\Models\Sections::with('questions')->find(
+                                                    $targetSectionId,
+                                                );
+
+                                                // 3. Obtenemos si ya hay un Entry guardado (El valor de la respuesta es el ID del entry hijo)
+                                                $childEntryId = $existingAnswers[$question->id] ?? null;
+
+                                                // 4. Si hay entry hijo, cargamos sus respuestas
+                                                $childAnswers = [];
+                                                if ($childEntryId) {
+                                                    $childEntry = \App\Models\Entry::with('answers')->find(
+                                                        $childEntryId,
+                                                    );
+                                                    // Mapeamos [question_id => value]
+                                                    $childAnswers = $childEntry->answers
+                                                        ->pluck('value', 'question_id')
+                                                        ->toArray();
+                                                }
+                                            @endphp
+
+                                            @if ($childSection)
+                                                <div class="border-l-4 border-blue-500 pl-4 ml-2 my-4 bg-gray-50 p-4 rounded">
+                                                    <h4 class="text-blue-800 font-bold mb-3">{{ $childSection->title }}
+                                                        </h4>
+
+                                                    {{-- Iteramos las preguntas de la sección HIJA --}}
+                                                    @foreach ($childSection->questions as $childQ)
+                                                        @php
+                                                            // NAMING CRÍTICO: sub_answers[PADRE][HIJO]
+                                                            $childInputName = "sub_answers[{$question->id}][{$childQ->id}]";
+
+                                                            // Recuperamos valor: old > guardado > default
+                                                            $childValue = old(
+                                                                "sub_answers.{$question->id}.{$childQ->id}",
+                                                                $childAnswers[$childQ->id] ?? '',
+                                                            );
+                                                        @endphp
+
+                                                        <div class="mb-3">
+                                                            <label
+                                                                class="block text-sm text-gray-600">{{ $childQ->label }}</label>
+
+                                                            {{-- Renderizado simplificado (copia tu switch grande aquí) --}}
+                                                            @if ($childQ->type === 'text')
+                                                                <input type="text" name="{{ $childInputName }}"
+                                                                    value="{{ $childValue }}" class="form-input w-full">
+                                                            @elseif($childQ->type === 'select')
+                                                                {{-- ... tu lógica de select ... --}}
+                                                            @endif
+                                                        </div>
+                                                    @endforeach
+                                                </div>
+                                            @endif
+                                        @break
                                     @endswitch
+
+
 
                                     {{-- 4. MOSTRAR ERRORES DE VALIDACIÓN --}}
                                     @error($errorKey)

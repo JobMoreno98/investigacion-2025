@@ -2,10 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Answer;
 use App\Models\AnswerFullView;
 use App\Models\Categorias;
-use App\Models\Entry;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -38,23 +36,17 @@ class CategoriasController extends Controller
     public function show($id)
     {
         $categoria = Categorias::with('secciones')->where('id', $id)->first();
-        // Verificamos si es la categoría especial
+        if (!isset($categoria->titulo)) {
+            abort(403, 'El registro no existe.');
+        }
         if ($categoria->titulo == 'Datos Generales') {
-
-            // 1. Buscamos si ya existe un registro
             $datos = AnswerFullView::select('entry_id')
                 ->where('user_id', Auth::id()) // Es mas corto usar Auth::id()
                 ->where('section_title', 'Datos Generales')
                 ->first();
-
-            // 2. Lógica de Decisión: ¿Editar o Crear?
             if ($datos) {
-                // SI EXISTE: Redirigir a Editar
                 return redirect()->route('answers.edit', $datos->entry_id);
             } else {
-                // NO EXISTE: Redirigir a Crear
-                // Necesitamos el ID de la sección para enviarlo a la ruta create.
-                // Asumimos que la categoría "Datos Generales" tiene una sección hija.
                 $seccion = $categoria->secciones->first();
 
                 if ($seccion) {
@@ -62,6 +54,23 @@ class CategoriasController extends Controller
                 }
             }
         }
+
+        if ($categoria->titulo == 'Datos Laborales') {
+            $datos = AnswerFullView::select('entry_id')
+                ->where('user_id', Auth::id()) // Es mas corto usar Auth::id()
+                ->where('section_title', 'Datos Laborales')
+                ->first();
+            if ($datos) {
+                return redirect()->route('answers.edit', $datos->entry_id);
+            } else {
+                $seccion = $categoria->secciones->first();
+
+                if ($seccion) {
+                    return redirect()->route('answers.show', $seccion->id);
+                }
+            }
+        }
+
         return view('categorias.index', compact('categoria'));
     }
 
