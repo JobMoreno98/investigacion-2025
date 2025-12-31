@@ -93,6 +93,7 @@ class SectionsForm
                             // 3. Fusionamos ambos arrays para que el admin elija cualquiera
                             return $universal;
                         }),
+
                     Select::make('options.target_section_id')
                         ->label('Sección a Incrustar')
                         ->helperText('Selecciona la sección genérica que quieres que aparezca aquí.')
@@ -107,6 +108,12 @@ class SectionsForm
                             ->label('¿Respuesta Única Global?')
                             ->helperText('Si activas esto, dos usuarios no podrán registrar el mismo valor.')
                             ->onColor('danger'),
+                        TextInput::make('options.default_value')
+                            ->label('Valor por defecto')
+                            ->placeholder('Ej: 0, N/A, Sin comentarios')
+                            ->helperText('Este valor aparecerá prellenado si el usuario no ha respondido.')
+                        // Ocultarlo en archivos, ya que no puedes prellenar un input file por seguridad
+                            ->hidden(fn ($get) => $get('type') === 'file'),
                     ]),
 
                 ])
