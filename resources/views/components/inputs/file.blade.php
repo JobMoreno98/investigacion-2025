@@ -29,7 +29,7 @@
                     <span class="text-xs font-bold text-blue-700 uppercase">Archivo Actual Cargado</span>
                     {{-- Si quieres mostrar el nombre real, necesitas lógica extra, si no, muestra 'Ver archivo' --}}
                     <a href="{{ Storage::url($value) }}" target="_blank" class="text-sm text-blue-600 underline truncate hover:text-blue-800">
-                        Ver / Descargar archivo
+                        Ver archivo
                     </a>
                 </div>
             </div>
