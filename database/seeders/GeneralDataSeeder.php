@@ -34,7 +34,7 @@ class GeneralDataSeeder extends Seeder
         $questions = [
             [
                 'label' => 'Código',
-                'type' => 'text',
+                'type' => 'number',
                 'is_required' => true,
                 'sort_order' => 1,
                 'is_unique' => true, // <--- IMPORTANTE: Nadie puede repetir este dato

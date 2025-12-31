@@ -1,5 +1,5 @@
 @php
-    $titlePage = 'Crear - ' . $seccion[0]->title;
+    $titlePage = 'Crear - ' . $seccion->title;
 @endphp
 <x-layouts.app :title="$titlePage">
     <div class="container m-auto">
@@ -27,99 +27,94 @@
                 @csrf
                 <div class="bg-white shadow rounded-lg p-6 border-t-2 border-blue-500">
                     {{-- 1. Iteramos sobre las SECCIONES --}}
-                    @foreach ($seccion as $section)
-                        <input type="hidden" name="section_ids[]" value="{{ $section->id }}">
 
-                        <h3 class="font-semibold text-gray-800">{{ $section->title }}</h3>
-                        @if ($section->description)
-                            <p class="text-gray-500 text-sm mb-4">{{ $section->description }}</p>
-                        @endif
-                        <div class="space-y-5 mt-4">                        
-                            @foreach ($section->questions as $question)                                
+                    <input type="hidden" name="section_ids[]" value="{{ $seccion->id }}">
+
+                    <h3 class="font-semibold text-gray-800">{{ $seccion->title }}</h3>
+                    @if ($seccion->description)
+                        <p class="text-gray-500 text-sm mb-4">{{ $seccion->description }}</p>
+                    @endif
+                    <div class="space-y-5 mt-4">
+                        @foreach ($seccion->questions as $question)
+                            @php
+                                $fieldName = "answers[{$question->id}]";
+                                $errorKey = "answers.{$question->id}";
+                                $savedValue = $existingAnswers[$question->id] ?? null;
+                                $defaultValue = $question->options['default_value'] ?? '';
+                                $finalValue = old($errorKey, $savedValue ?? $defaultValue);
+                            @endphp
+
+                            <div class="flex flex-col">
                                 @php
-                                    $fieldName = "answers[{$question->id}]";
-                                    $errorKey = "answers.{$question->id}";
-                                    $savedValue = $existingAnswers[$question->id] ?? null;
-                                    $defaultValue = $question->options['default_value'] ?? '';
-                                    $finalValue = old($errorKey, $savedValue ?? $defaultValue);
+                                    // Mapeo de seguridad: Si el tipo no tiene componente, usa 'text' por defecto
+                                    $componentName = 'inputs.' . $question->type;
+                                    if (!view()->exists("components.{$componentName}")) {
+                                        $componentName = 'inputs.text';
+                                    }
                                 @endphp
+                                <x-dynamic-component :component="$componentName" :question="$question" :value="$finalValue" />
+                                @switch($question->type)
+                                    @case('sub_form')
+                                        @php
+                                            // 1. Identificamos qué sección incrustar
+                                            $targetSectionId = $question->options['target_section_id'];
 
-                                <div class="flex flex-col">
-                                    @php
-                                        // Mapeo de seguridad: Si el tipo no tiene componente, usa 'text' por defecto
-                                        $componentName = 'inputs.' . $question->type;
-                                        if (!view()->exists("components.{$componentName}")) {
-                                            $componentName = 'inputs.text';
-                                        }
-                                    @endphp
-                                    <x-dynamic-component :component="$componentName" :question="$question" :value="$finalValue" />                                    
-                                    @switch($question->type)
-                                        @case('sub_form')
-                                            @php
-                                                // 1. Identificamos qué sección incrustar
-                                                $targetSectionId = $question->options['target_section_id'];
+                                            // 2. Buscamos las preguntas de esa sección (Mejor si las pasas desde el controlador para optimizar)
+                                            $childSection = \App\Models\Sections::with('questions')->find(
+                                                $targetSectionId,
+                                            );
 
-                                                // 2. Buscamos las preguntas de esa sección (Mejor si las pasas desde el controlador para optimizar)
-                                                $childSection = \App\Models\Sections::with('questions')->find(
-                                                    $targetSectionId,
-                                                );
+                                            // 3. Obtenemos si ya hay un Entry guardado (El valor de la respuesta es el ID del entry hijo)
+                                            $childEntryId = $existingAnswers[$question->id] ?? null;
 
-                                                // 3. Obtenemos si ya hay un Entry guardado (El valor de la respuesta es el ID del entry hijo)
-                                                $childEntryId = $existingAnswers[$question->id] ?? null;
+                                            // 4. Si hay entry hijo, cargamos sus respuestas
+                                            $childAnswers = [];
+                                            if ($childEntryId) {
+                                                $childEntry = \App\Models\Entry::with('answers')->find($childEntryId);
+                                                // Mapeamos [question_id => value]
+                                                $childAnswers = $childEntry->answers
+                                                    ->pluck('value', 'question_id')
+                                                    ->toArray();
+                                            }
+                                        @endphp
 
-                                                // 4. Si hay entry hijo, cargamos sus respuestas
-                                                $childAnswers = [];
-                                                if ($childEntryId) {
-                                                    $childEntry = \App\Models\Entry::with('answers')->find(
-                                                        $childEntryId,
-                                                    );
-                                                    // Mapeamos [question_id => value]
-                                                    $childAnswers = $childEntry->answers
-                                                        ->pluck('value', 'question_id')
-                                                        ->toArray();
-                                                }
-                                            @endphp
+                                        @if ($childSection)
+                                            <div class="border-l-4 border-blue-500 pl-4 ml-2 my-4 bg-gray-50 p-4 rounded">
+                                                <h4 class="text-blue-800 font-bold mb-3">{{ $childSection->title }}
+                                                </h4>
 
-                                            @if ($childSection)
-                                                <div class="border-l-4 border-blue-500 pl-4 ml-2 my-4 bg-gray-50 p-4 rounded">
-                                                    <h4 class="text-blue-800 font-bold mb-3">{{ $childSection->title }}
-                                                    </h4>
+                                                {{-- Iteramos las preguntas de la sección HIJA --}}
+                                                @foreach ($childSection->questions as $childQ)
+                                                    @php
+                                                        // NAMING CRÍTICO: sub_answers[PADRE][HIJO]
+                                                        $childInputName = "sub_answers[{$question->id}][{$childQ->id}]";
 
-                                                    {{-- Iteramos las preguntas de la sección HIJA --}}
-                                                    @foreach ($childSection->questions as $childQ)
-                                                        @php
-                                                            // NAMING CRÍTICO: sub_answers[PADRE][HIJO]
-                                                            $childInputName = "sub_answers[{$question->id}][{$childQ->id}]";
+                                                        // Recuperamos valor: old > guardado > default
+                                                        $childValue = old(
+                                                            "sub_answers.{$question->id}.{$childQ->id}",
+                                                            $childAnswers[$childQ->id] ?? '',
+                                                        );
+                                                    @endphp
 
-                                                            // Recuperamos valor: old > guardado > default
-                                                            $childValue = old(
-                                                                "sub_answers.{$question->id}.{$childQ->id}",
-                                                                $childAnswers[$childQ->id] ?? '',
-                                                            );
-                                                        @endphp
+                                                    <div class="mb-3">
+                                                        <label class="block text-sm text-gray-600">{{ $childQ->label }}</label>
 
-                                                        <div class="mb-3">
-                                                            <label
-                                                                class="block text-sm text-gray-600">{{ $childQ->label }}</label>
-
-                                                            {{-- Renderizado simplificado (copia tu switch grande aquí) --}}
-                                                            @if ($childQ->type === 'text')
-                                                                <input type="text" name="{{ $childInputName }}"
-                                                                    value="{{ $childValue }}" class="form-input w-full">
-                                                            @elseif($childQ->type === 'select')
-                                                                {{-- ... tu lógica de select ... --}}
-                                                            @endif
-                                                        </div>
-                                                    @endforeach
-                                                </div>
-                                            @endif
-                                        @break
-                                    @endswitch
-                                </div>
-                            @endforeach
-                        </div>
-                    @endforeach
-
+                                                        {{-- Renderizado simplificado (copia tu switch grande aquí) --}}
+                                                        @if ($childQ->type === 'text')
+                                                            <input type="text" name="{{ $childInputName }}"
+                                                                value="{{ $childValue }}" class="form-input w-full">
+                                                        @elseif($childQ->type === 'select')
+                                                            {{-- ... tu lógica de select ... --}}
+                                                        @endif
+                                                    </div>
+                                                @endforeach
+                                            </div>
+                                        @endif
+                                    @break
+                                @endswitch
+                            </div>
+                        @endforeach
+                    </div>
                     <div class="flex justify-center mt-4">
                         <button type="submit"
                             class="bg-blue-600 text-xs hover:bg-blue-700 text-white font-bold py-1 px-4 rounded shadow-lg transition duration-150">

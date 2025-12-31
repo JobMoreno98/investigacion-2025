@@ -16,7 +16,7 @@
         <select 
             name="{{ $name }}" 
             id="select-{{ $question->id }}"
-            class="form-select w-full rounded-md border-gray-300"
+            class="form-select w-full rounded-md border-gray-300 p-2"
             @if($enableSearch) placeholder="Buscar..." @endif
         >
             <option value="">Seleccione alguna opción...</option>
