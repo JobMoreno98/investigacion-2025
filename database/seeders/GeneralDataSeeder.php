@@ -3,10 +3,9 @@
 namespace Database\Seeders;
 
 use App\Models\Categorias;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
-use Illuminate\Database\Seeder;
-use App\Models\Sections;
 use App\Models\Questions;
+use App\Models\Sections;
+use Illuminate\Database\Seeder;
 
 class GeneralDataSeeder extends Seeder
 {
@@ -28,7 +27,7 @@ class GeneralDataSeeder extends Seeder
                 'is_repeatable' => false, // <--- IMPORTANTE: Solo se llena una vez
                 'is_active' => true,
                 'sort_order' => 1, // Que aparezca primero
-                'categoria_id' => $categoria->id
+                'categoria_id' => $categoria->id,
             ]
         );
         $questions = [
@@ -73,17 +72,19 @@ class GeneralDataSeeder extends Seeder
                 'is_unique' => false,
                 'options' => [
                     'choices' => [
-                        'value' => 'masculino',
-                        'label' => 'Masculino'
+                        [
+                            'value' => 'masculino',
+                            'label' => 'Masculino',
+                        ],
+                        [
+                            'value' => 'femenino',
+                            'label' => 'Femenino',
+                        ],
+                        [
+                            'value' => 'otro',
+                            'label' => 'Otro',
+                        ],
                     ],
-                    [
-                        'value' => 'femenino',
-                        'label' => 'Femenino'
-                    ],
-                    [
-                        'value' => 'otro',
-                        'label' => 'Otro'
-                    ]
                 ],
             ],
             [
@@ -92,15 +93,15 @@ class GeneralDataSeeder extends Seeder
                 'is_required' => true,
                 'sort_order' => 4,
                 'is_unique' => false,
-                'options' => null
-            ]
+                'options' => null,
+            ],
         ];
         foreach ($questions as $qData) {
             // Buscamos si la pregunta ya existe en esta sección para no duplicar
             Questions::firstOrCreate(
                 [
                     'section_id' => $section->id,
-                    'label' => $qData['label']
+                    'label' => $qData['label'],
                 ],
                 [
                     'type' => $qData['type'],

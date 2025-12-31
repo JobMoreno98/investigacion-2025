@@ -15,8 +15,8 @@ select `a`.`id` AS `answer_id`,`a`.`entry_id` AS `entry_id`,
 `q`.`id` AS `question_id`,`q`.`label` AS `pregunta`,`s`.`id` AS `section_id`,
 `s`.`title` AS `section_title`,`u`.`id` AS `user_id`,`u`.`name` AS `user_name`,
 `u`.`email` AS `user_email` 
-from ((((`sia_final`.`answers` `a` join `sia_final`.`questions` `q` on((`a`.`question_id` = `q`.`id`))) 
-join `sia_final`.`sections` `s` on((`q`.`section_id` = `s`.`id`))) join `sia_final`.`entries` `e` on((`a`.`entry_id` = `e`.`id`))) join `sia_final`.`users` `u` on((`e`.`user_id` = `u`.`id`)))
+from ((((`sia`.`answers` `a` join `sia`.`questions` `q` on((`a`.`question_id` = `q`.`id`))) 
+join `sia`.`sections` `s` on((`q`.`section_id` = `s`.`id`))) join `sia`.`entries` `e` on((`a`.`entry_id` = `e`.`id`))) join `sia`.`users` `u` on((`e`.`user_id` = `u`.`id`)))
         ");
     }
 
