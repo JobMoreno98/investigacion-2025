@@ -119,6 +119,49 @@
                                     @endif
                                 @break
 
+                                @case('catalog')
+                                    @php
+                                        // 1. Identificar qué catálogo se configuró
+                                        $catalogName = $question->options['catalog_name'] ?? '';
+
+                                        // 2. Obtener los datos usando tu Helper Universal
+                                        $options = \App\Helpers\CatalogProvider::get($catalogName);
+
+                                        // 3. Decidir si activamos el buscador (si son muchos items)
+                                        $enableSearch = count($options) > 10;
+                                    @endphp
+
+                                    <div wire:ignore> {{-- Importante si usas Livewire para que no resetee el plugin --}}
+                                        <select name="{{ $fieldName }}" id="select-{{ $question->id }}"
+                                            class="form-select text-stone-900 border-gray-900 rounded-sm shadow-md focus:border-blue-500 focus:ring focus:ring-blue-200 w-full p-2"
+                                            @if ($enableSearch) placeholder="Escribe para buscar..." @endif>
+                                            <option value="">Seleccione una opción...</option>
+
+                                            @foreach ($options as $id => $label)
+                                                {{-- Nota: Comparamos como string para evitar fallos de '1' vs 1 --}}
+                                                <option value="{{ $id }}"
+                                                    {{ (string) old($errorKey, $dbValue) === (string) $id ? 'selected' : '' }}>
+                                                    {{ $label }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+
+                                    {{-- Script para activar el buscador (TomSelect) --}}
+                                    @if ($enableSearch)
+                                        <script>
+                                            // Asegúrate de tener cargada la librería TomSelect en tu layout
+                                            new TomSelect("#select-{{ $question->id }}", {
+                                                create: false,
+                                                sortField: {
+                                                    field: "text",
+                                                    direction: "asc"
+                                                }
+                                            });
+                                        </script>
+                                    @endif
+                                @break
+
                                 @case('date')
                                     @php $opts = $question->options ?? []; @endphp
                                     <input type="date" name="{{ $fieldName }}" value="{{ old($errorKey, $dbValue) }}"

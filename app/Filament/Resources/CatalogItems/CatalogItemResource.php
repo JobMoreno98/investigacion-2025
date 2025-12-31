@@ -20,7 +20,11 @@ class CatalogItemResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
 
-    protected static ?string $recordTitleAttribute = 'Catalogo';
+    protected static ?string $pluralModelLabel  = 'Catalogos';
+
+    protected static ?string $title = 'Catalogos';
+
+    protected static ?string $navigationLabel = 'Catalogos';
 
     public static function form(Schema $schema): Schema
     {

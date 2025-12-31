@@ -6,6 +6,7 @@ use App\Filament\Resources\Categorias\CategoriasResource;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\ViewAction;
 use Filament\Resources\Pages\EditRecord;
+use Illuminate\Contracts\Support\Htmlable;
 
 class EditCategorias extends EditRecord
 {
@@ -17,5 +18,10 @@ class EditCategorias extends EditRecord
             ViewAction::make(),
             DeleteAction::make(),
         ];
+    }
+        public function getTitle(): string|Htmlable
+    {
+        $nombre = $this->record->titulo ?? 'Registro';
+        return "Editar {$nombre}";
     }
 }

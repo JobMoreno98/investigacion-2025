@@ -24,7 +24,11 @@ class SectionsResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
 
-    protected static ?string $recordTitleAttribute = 'Secciones';
+     protected static ?string $pluralModelLabel  = 'Secciones';
+
+    protected static ?string $title = 'Secciones';
+
+    protected static ?string $navigationLabel = 'Secciones';
 
     public static function form(Schema $schema): Schema
     {

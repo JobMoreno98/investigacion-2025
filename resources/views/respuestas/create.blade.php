@@ -30,7 +30,7 @@
                     @foreach ($seccion as $section)
                         <input type="hidden" name="section_ids[]" value="{{ $section->id }}">
 
-                        <h2 class="text-xl font-semibold text-gray-800">{{ $section->title }}</h2>
+                        <h3 class="font-semibold text-gray-800">{{ $section->title }}</h3>
                         @if ($section->description)
                             <p class="text-gray-500 text-sm mb-4">{{ $section->description }}</p>
                         @endif

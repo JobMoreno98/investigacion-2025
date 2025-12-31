@@ -8,6 +8,7 @@ use Filament\Actions\ForceDeleteAction;
 use Filament\Actions\RestoreAction;
 use Filament\Actions\ViewAction;
 use Filament\Resources\Pages\EditRecord;
+use Illuminate\Contracts\Support\Htmlable;
 
 class EditSections extends EditRecord
 {
@@ -15,11 +16,17 @@ class EditSections extends EditRecord
 
     protected function getHeaderActions(): array
     {
+
         return [
             ViewAction::make(),
             DeleteAction::make(),
             ForceDeleteAction::make(),
             RestoreAction::make(),
         ];
+    }
+    public function getTitle(): string|Htmlable
+    {
+        $nombre = $this->record->title ?? 'Registro';
+        return "Editar {$nombre}";
     }
 }

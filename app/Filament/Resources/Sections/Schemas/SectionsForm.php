@@ -28,8 +28,9 @@ class SectionsForm
                 ->helperText('Actívalo para secciones como "Estudios". Desactívalo para "Datos Generales" (solo llenan una vez).'),
 
             // Aquí gestionamos las preguntas de esta sección
-            Repeater::make('questions')
+            Repeater::make('questions')->addActionLabel('Añadir pregunta')->collapsed()->itemLabel(fn(array $state): ?string => $state['label'] ?? null)
                 ->columnSpan(2)
+                ->reorderableWithButtons()
                 ->columns(2)
                 ->relationship() // Usa la relación hasMany
                 ->schema([
