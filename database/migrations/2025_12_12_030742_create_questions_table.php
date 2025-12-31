@@ -17,7 +17,9 @@ return new class extends Migration {
             $table->string('type'); // 'text', 'select', 'file', 'number', 'textarea'
             $table->json('options')->nullable(); // Guardará array: ["Rojo", "Azul"]
             $table->boolean('is_required')->default(false);
+            $table->boolean('is_unique')->default(false);
             $table->integer('sort_order')->default(0);
+            
             $table->softDeletes();
             $table->timestamps();
         });

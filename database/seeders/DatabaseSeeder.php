@@ -19,15 +19,16 @@ class DatabaseSeeder extends Seeder
 
         Admin::create([
             'name' => 'Test User',
-            'email' => 'jobmoreno@gmail.com',
+            'email' => 'jobmoreno.mtz@gmail.com',
             'password' =>Hash::make('password')
         ]);
 
         User::create([
             'name' => 'Test User',
-            'email' => 'jobmoreno@gmail.com',
+            'email' => 'jobmoreno.mtz@gmail.com',
             'password' =>Hash::make('password')
         ]);
+        $this->call(GeneralDataSeeder::class);
         
     }
 }

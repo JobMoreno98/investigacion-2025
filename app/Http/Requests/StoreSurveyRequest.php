@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use App\Models\Questions;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreSurveyRequest extends FormRequest
 {
@@ -37,7 +38,7 @@ class StoreSurveyRequest extends FormRequest
 
         foreach ($questions as $question) {
             // La clave que envía el HTML es answers[ID], para validación es answers.ID
-            $fieldKey = 'answers.'.$question->id;
+            $fieldKey = 'answers.' . $question->id;
 
             $fieldRules = [];
 
@@ -47,6 +48,37 @@ class StoreSurveyRequest extends FormRequest
             if ($question->type !== 'file') {
                 $fieldRules[] = $question->is_required ? 'required' : 'nullable';
             }
+
+            if ($question->is_unique) {
+
+                // 1. Iniciamos la regla básica: Busca en tabla 'answers', columna 'value'
+                // y filtra solo por la pregunta actual.
+                $uniqueRule = \Illuminate\Validation\Rule::unique('answers', 'value')
+                    ->where('question_id', $question->id);
+
+                // 2. EXCEPCIÓN VITAL: Si estamos EDITANDO, ignoramos el entry actual
+                if ($this->isMethod('put') || $this->isMethod('patch')) {
+
+                    // A. Obtenemos el parámetro de la ruta.
+                    // OJO: Verifica en tus rutas si se llama {entry} o {id}
+                    // Route::put('/survey/{entry}', ...) -> Se llama 'entry'
+                    $entryRouteParam = $this->route('answer');
+
+                    // B. Extraemos el ID numérico de forma segura
+                    // (A veces Laravel te da el Objeto completo, a veces solo el ID string)
+                    $entryIdToIgnore = ($entryRouteParam instanceof \Illuminate\Database\Eloquent\Model)
+                        ? $entryRouteParam->id
+                        : $entryRouteParam;
+
+                    // C. Aplicamos la exclusión: "Donde entry_id NO sea el actual"
+                    if ($entryIdToIgnore) {
+                        $uniqueRule->whereNot('entry_id', $entryIdToIgnore);
+                    }
+                }
+
+                $fieldRules[] = $uniqueRule;
+            }
+
 
             // ---------------------------------------------------------
             // B. Reglas según el Tipo de Pregunta
@@ -60,24 +92,30 @@ class StoreSurveyRequest extends FormRequest
                     $fieldRules[] = 'max:65535';
                     break;
 
-                    // --- NÚMERO ---
+                // --- NÚMERO ---
                 case 'number':
                     $fieldRules[] = 'numeric';
                     break;
 
-                    // --- SELECT / LISTA ---
+                // --- SELECT / LISTA ---
                 case 'select':
-                    // Antes: if (!empty($question->options)) ...
-                    // AHORA: Buscamos dentro de 'choices'
+                    // ANTES (KeyValue): 
+                    // $validKeys = implode(',', array_keys($question->options['choices']));
+
+                    // AHORA (Repeater):
+                    // La estructura es un array de arrays. Usamos array_column para sacar los 'value'.
                     $choices = $question->options['choices'] ?? [];
 
-                    if (! empty($choices)) {
-                        $validKeys = implode(',', array_keys($choices));
-                        $fieldRules[] = 'in:'.$validKeys;
+                    if (!empty($choices)) {
+                        // Extraemos solo la columna 'value' del array de opciones
+                        $values = array_column($choices, 'value');
+                        $validKeys = implode(',', $values);
+
+                        $fieldRules[] = 'in:' . $validKeys;
                     }
                     break;
 
-                    // --- ARCHIVOS ---
+                // --- ARCHIVOS ---
                 case 'file':
                     $fieldRules[] = 'file';
                     $fieldRules[] = 'max:10240';
@@ -97,26 +135,49 @@ class StoreSurveyRequest extends FormRequest
 
                     if (! empty($allowedFormats)) {
                         $formats = str_replace(' ', '', $allowedFormats);
-                        $fieldRules[] = 'mimes:'.$formats;
+                        $fieldRules[] = 'mimes:' . $formats;
                     } else {
                         // Default seguro
                         $fieldRules[] = 'mimes:pdf';
                     }
                     break;
 
-                    // --- FECHAS (Con lógica dinámica de min/max) ---
+                // --- FECHAS (Con lógica dinámica de min/max) ---
                 case 'date':
                     $fieldRules[] = 'date';
 
                     // Si el admin configuró 'min_date' en Filament
                     if (! empty($question->options['min_date'])) {
                         // after_or_equal:today funciona nativamente en Laravel
-                        $fieldRules[] = 'after_or_equal:'.$question->options['min_date'];
+                        $fieldRules[] = 'after_or_equal:' . $question->options['min_date'];
                     }
 
                     // Si el admin configuró 'max_date' en Filament
                     if (! empty($question->options['max_date'])) {
-                        $fieldRules[] = 'before_or_equal:'.$question->options['max_date'];
+                        $fieldRules[] = 'before_or_equal:' . $question->options['max_date'];
+                    }
+                    break;
+                // ... dentro del switch($question->type) ...
+
+                case 'catalog':
+                    $catalogName = $question->options['catalog_name'] ?? '';
+
+                    // Obtenemos las opciones válidas del Helper
+                    $validOptions = \App\Helpers\CatalogProvider::get($catalogName);
+
+                    if (!empty($validOptions)) {
+                        // Obtenemos los IDs permitidos (las llaves del array)
+                        $validKeys = array_keys($validOptions);
+
+                        // Convertimos a string por si son IDs numéricos
+                        $validKeysStr = implode(',', $validKeys);
+
+                        // Regla: El valor enviado debe estar dentro de las llaves permitidas
+                        $fieldRules[] = 'in:' . $validKeysStr;
+                    } else {
+                        // Seguridad: Si el catálogo está vacío o no existe, fallamos la validación
+                        // para evitar que guarden basura.
+                        $fieldRules[] = 'prohibited';
                     }
                     break;
             }
@@ -139,7 +200,7 @@ class StoreSurveyRequest extends FormRequest
         $questions = Questions::all();
 
         foreach ($questions as $question) {
-            $attributes['answers.'.$question->id] = $question->label;
+            $attributes['answers.' . $question->id] = $question->label;
         }
 
         return $attributes;
@@ -158,6 +219,7 @@ class StoreSurveyRequest extends FormRequest
             'in' => 'La opción seleccionada en ":attribute" no es válida.',
             'file' => 'El archivo subido en ":attribute" no es válido.',
             'max' => 'El valor de ":attribute" excede el límite permitido.',
+            'unique' => 'El campo ":attribute" ya ha sido registrado por otro usuario. Si surge algún problema, favor de contactar a un administrador.',
         ];
     }
 }

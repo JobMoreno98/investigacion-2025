@@ -3,6 +3,8 @@
 
 <head>
     @include('partials.head')
+    <link href="https://cdn.jsdelivr.net/npm/tom-select@2.4.3/dist/css/tom-select.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/tom-select@2.4.3/dist/js/tom-select.complete.min.js"></script>
 </head>
 
 <body class="min-h-screen bg-white">
@@ -13,7 +15,7 @@
             <x-app-logo />
         </a>
 
-        <flux:navlist >
+        <flux:navlist>
             <livewire:navigation-bar-mobile />
         </flux:navlist>
 

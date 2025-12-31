@@ -10,7 +10,7 @@
             @endif
             {{-- 
             <flux:navlist.item :href="route('appearance.edit')" wire:navigate>{{ __('Appearance') }}</flux:navlist.item>
-             --}}
+              --}}
         </flux:navlist>
     </div>
 

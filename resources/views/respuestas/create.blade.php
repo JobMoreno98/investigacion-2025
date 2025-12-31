@@ -11,6 +11,7 @@
                     {{ session('success') }}
                 </div>
             @endif
+{{--  
             @if ($errors->any())
                 <div class="alert alert-danger">
                     <ul>
@@ -20,7 +21,7 @@
                     </ul>
                 </div>
             @endif
-
+--}}
             {{-- IMPORTANTE: enctype es necesario para subir archivos --}}
             <form action="{{ route('answers.store') }}" method="POST" enctype="multipart/form-data" class="space-y-8">
                 @csrf
@@ -87,20 +88,63 @@
 
                                         {{-- SELECT / DROPDOWN --}}
                                         @case('select')
-                                            <select name="{{ $fieldName }}"
-                                                class="text-stone-900 border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 w-full">
+                                            <select name="{{ $fieldName }}" class="form-select w-full ...">
                                                 <option value="">Seleccione...</option>
 
-                                                {{-- AHORA: Verificamos si existe 'choices' --}}
-                                                @if (isset($question->options['choices']))
-                                                    @foreach ($question->options['choices'] as $key => $label)
-                                                        <option value="{{ $key }}"
-                                                            {{ $oldValue == $key ? 'selected' : '' }}>
-                                                            {{ $label }}
+                                                {{-- Verifica que exista y sea iterable --}}
+                                                @if (!empty($question->options['choices']))
+                                                    @foreach ($question->options['choices'] as $choice)
+                                                        {{-- Ahora accedemos como array: $choice['value'] y $choice['label'] --}}
+                                                        <option value="{{ $choice['value'] }}"
+                                                            {{ $oldValue == $choice['value'] ? 'selected' : '' }}>
+                                                            {{ $choice['label'] }}
                                                         </option>
                                                     @endforeach
                                                 @endif
                                             </select>
+                                        @break
+
+                                        @case('catalog')
+                                            @php
+                                                // 1. Identificar qué catálogo se configuró
+                                                $catalogName = $question->options['catalog_name'] ?? '';
+
+                                                // 2. Obtener los datos usando tu Helper Universal
+                                                $options = \App\Helpers\CatalogProvider::get($catalogName);
+
+                                                // 3. Decidir si activamos el buscador (si son muchos items)
+                                                $enableSearch = count($options) > 10;
+                                            @endphp
+
+                                            <div wire:ignore> {{-- Importante si usas Livewire para que no resetee el plugin --}}
+                                                <select name="{{ $fieldName }}" id="select-{{ $question->id }}"
+                                                    class="form-select w-full"
+                                                    @if ($enableSearch) placeholder="Escribe para buscar..." @endif>
+                                                    <option value="">Seleccione una opción...</option>
+
+                                                    @foreach ($options as $id => $label)
+                                                        {{-- Nota: Comparamos como string para evitar fallos de '1' vs 1 --}}
+                                                        <option value="{{ $id }}"
+                                                            {{ (string) $oldValue === (string) $id ? 'selected' : '' }}>
+                                                            {{ $label }}
+                                                        </option>
+                                                    @endforeach
+                                                </select>
+                                            </div>
+
+                                            {{-- Script para activar el buscador (TomSelect) --}}
+                                            @if ($enableSearch)
+                                                <script>
+                                                    // Asegúrate de tener cargada la librería TomSelect en tu layout
+                                                    new TomSelect("#select-{{ $question->id }}", {
+                                                        create: false,
+                                                        sortField: {
+                                                            field: "text",
+                                                            direction: "asc"
+                                                        }
+                                                    });
+                                                </script>
+                                            @endif
                                         @break
 
                                         {{-- ARCHIVO --}}

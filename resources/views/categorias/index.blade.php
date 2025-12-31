@@ -42,6 +42,7 @@
 
                                     <div class="flex space-x-3">
                                         <div class="flex space-x-3">
+                                            
                                             <a href="{{ route('answers.edit', $entry->id) }}"
                                                 class="text-black-600 hover:text-indigo-900 text-sm font-medium">
                                                 <flux:icon.printer variant="mini" />

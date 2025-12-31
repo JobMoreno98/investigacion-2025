@@ -14,6 +14,7 @@ class Questions extends Model
     protected $casts = [
         'options' => 'array',
         'is_required' => 'boolean',
+        'is_unique' => 'boolean',
     ];
 
     public function section()

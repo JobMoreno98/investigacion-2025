@@ -6,6 +6,7 @@ use App\Http\Requests\StoreSurveyRequest;
 use App\Models\Answer;
 use App\Models\Entry;
 use App\Models\Sections;
+use Illuminate\Support\Facades\Auth;
 
 class AnswerController extends Controller
 {
@@ -36,7 +37,7 @@ class AnswerController extends Controller
 
         // 1. Crear el Entry (El contenedor del envío)
         $entry = Entry::create([
-            'user_id' => auth()->id(), // o null si es anónimo
+            'user_id' => Auth::user()->id, // o null si es anónimo
         ]);
 
         // 2. Guardar las respuestas vinculadas a ese Entry
@@ -53,7 +54,8 @@ class AnswerController extends Controller
             ]);
         }
 
-        return back()->with('success', 'Enviado correctamente');
+        return redirect()->route('answers.edit', $entry->id)->with('success', 'Registrado correctamente.');
+        //return back()->with('success', 'Enviado correctamente');
     }
 
     /**
@@ -75,7 +77,7 @@ class AnswerController extends Controller
         $entry = Entry::with(['answers.question', 'answers'])->findOrFail($id);
 
         // 2. Seguridad: Verificar que el entry pertenece al usuario logueado
-        if ($entry->user_id !== auth()->id()) {
+        if ($entry->user_id !== Auth::user()->id) {
             abort(403, 'No tienes permiso para editar este registro.');
         }
         if (! $entry->is_editable) {
@@ -96,7 +98,7 @@ class AnswerController extends Controller
 
         // 4. Cargar la estructura del formulario (Preguntas)
         $seccion = Sections::where('id', $sectionId)
-            ->with(['questions' => fn ($q) => $q->orderBy('sort_order')])
+            ->with(['questions' => fn($q) => $q->orderBy('sort_order')])
             ->first();
 
         // 5. TRUCO PRO: Mapear respuestas para acceso rápido en la vista
@@ -116,7 +118,7 @@ class AnswerController extends Controller
             abort(403, 'El registro está bloqueado.');
         }
         // Seguridad
-        if ($entry->user_id !== auth()->id()) {
+        if ($entry->user_id !== Auth::user()->id) {
             abort(403);
         }
 
