@@ -20,7 +20,7 @@ class GeneralDataSeeder extends Seeder
                 'titulo' => 'Datos Generales',
             ]
         );
-        
+
         $section = Sections::firstOrCreate(
             ['title' => 'Datos Generales'], // Busca por título
             [
@@ -69,7 +69,7 @@ class GeneralDataSeeder extends Seeder
                 'label' => 'Género',
                 'type' => 'select',
                 'is_required' => true,
-                'sort_order' => 5,
+                'sort_order' => 7,
                 'is_unique' => false,
                 'options' => [
                     'choices' => [
@@ -96,6 +96,29 @@ class GeneralDataSeeder extends Seeder
                 'is_unique' => false,
                 'options' => null,
             ],
+            [
+                'label' => 'División',
+                'type' => 'catalog',
+                'is_required' => true,
+                'sort_order' => 5,
+                'is_unique' => false,
+                'options' => [
+                    "catalog_name" => "divisiones",
+                    "default_value" => null
+                ],
+            ],
+            [
+                'label' => 'Departamento',
+                'type' => 'catalog',
+                'is_required' => true,
+                'sort_order' => 6,
+                'is_unique' => false,
+                'options' => [
+                    "catalog_name" => "departamentos",
+                    "default_value" => null
+                ],
+            ],
+
         ];
         foreach ($questions as $qData) {
             // Buscamos si la pregunta ya existe en esta sección para no duplicar
@@ -113,7 +136,5 @@ class GeneralDataSeeder extends Seeder
                 ]
             );
         }
-
-
     }
 }
