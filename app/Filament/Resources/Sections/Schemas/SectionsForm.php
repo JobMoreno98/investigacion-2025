@@ -7,6 +7,7 @@ use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Forms\Components\ToggleButtons;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Str;
@@ -18,6 +19,9 @@ class SectionsForm
         return $schema->components([
             TextInput::make('title')->required()->label('Título'),
             TextInput::make('description')->label('Descripción'),
+            ToggleButtons::make('investigacion')
+                ->label('Compartir con Investigación?')
+                ->boolean(),
             Select::make('categoria_id')
                 ->relationship(name: 'categorias', titleAttribute: 'titulo'),
             Toggle::make('is_repeatable')
@@ -26,7 +30,7 @@ class SectionsForm
                 ->helperText('Actívalo para secciones como "Estudios". Desactívalo para "Datos Generales" (solo llenan una vez).'),
 
             // Aquí gestionamos las preguntas de esta sección
-            Repeater::make('questions')->addActionLabel('Añadir pregunta')->collapsed()->itemLabel(fn (array $state): ?string => $state['label'] ?? null)
+            Repeater::make('questions')->addActionLabel('Añadir pregunta')->collapsed()->itemLabel(fn(array $state): ?string => $state['label'] ?? null)
                 ->columnSpan(2)
                 ->label('Preguntas')
                 ->reorderableWithButtons()
@@ -54,7 +58,7 @@ class SectionsForm
                         ->label('Formatos permitidos')
                         ->placeholder('ej: pdf, jpg, png, docx')
                         ->helperText('Escribe las extensiones separadas por coma.')
-                        ->visible(fn ($get) => $get('type') === 'file'),
+                        ->visible(fn($get) => $get('type') === 'file'),
 
                     // Este campo solo aparece si el tipo es 'select'
                     Repeater::make('options.choices')
@@ -73,13 +77,13 @@ class SectionsForm
                         ->defaultItems(1)
                         ->reorderableWithButtons() // O ->reorderable() simple
                         ->collapsible()
-                        ->itemLabel(fn (array $state): ?string => $state['label'] ?? null) // Pone el título en la barrita colapsada
-                        ->visible(fn ($get) => $get('type') === 'select'),
+                        ->itemLabel(fn(array $state): ?string => $state['label'] ?? null) // Pone el título en la barrita colapsada
+                        ->visible(fn($get) => $get('type') === 'select'),
 
                     Select::make('options.catalog_name')
                         ->label('Fuente de Datos')
                         ->helperText('Selecciona qué lista de la base de datos se cargará.')
-                        ->visible(fn ($get) => $get('type') === 'catalog') // Solo visible si es tipo catálogo
+                        ->visible(fn($get) => $get('type') === 'catalog') // Solo visible si es tipo catálogo
                         ->required()
                         ->searchable()
                         ->options(function () {
@@ -87,7 +91,7 @@ class SectionsForm
                             $universal = CatalogItem::query()
                                 ->distinct()
                                 ->pluck('catalog_type')
-                                ->mapWithKeys(fn ($type) => [$type => Str::ucfirst($type)])
+                                ->mapWithKeys(fn($type) => [$type => Str::ucfirst($type)])
                                 ->toArray();
 
                             // 3. Fusionamos ambos arrays para que el admin elija cualquiera
@@ -100,7 +104,7 @@ class SectionsForm
                         // Listamos todas las secciones NO repetibles (para simplificar)
                         ->options(\App\Models\Sections::where('is_repeatable', false)->pluck('title', 'id'))
                         ->required()
-                        ->visible(fn ($get) => $get('type') === 'sub_form'),
+                        ->visible(fn($get) => $get('type') === 'sub_form'),
 
                     Section::make()->schema([
                         Toggle::make('is_required'),
@@ -112,8 +116,8 @@ class SectionsForm
                             ->label('Valor por defecto')
                             ->placeholder('Ej: 0, N/A, Sin comentarios')
                             ->helperText('Este valor aparecerá prellenado si el usuario no ha respondido.')
-                        // Ocultarlo en archivos, ya que no puedes prellenar un input file por seguridad
-                            ->hidden(fn ($get) => $get('type') === 'file'),
+                            // Ocultarlo en archivos, ya que no puedes prellenar un input file por seguridad
+                            ->hidden(fn($get) => $get('type') === 'file'),
                     ]),
 
                 ])

@@ -16,6 +16,8 @@ return new class extends Migration
             
             $table->string('titulo');
             $table->string('descripcion')->nullable();
+            $table->tinyInteger('investigacion')->default(0);
+            
             $table->timestamps();
         });
     }

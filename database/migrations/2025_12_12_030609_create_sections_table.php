@@ -17,6 +17,7 @@ return new class extends Migration {
             $table->integer('sort_order')->default(0); // Para ordenar secciones
             $table->boolean('is_active')->default(true);
             $table->foreignId('categoria_id')->constrained()->cascadeOnDelete();
+            $table->tinyInteger('investigacion')->default(0);
             $table->softDeletes();
             $table->timestamps();
         });
