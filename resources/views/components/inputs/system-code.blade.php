@@ -37,14 +37,15 @@
 })" x-on:recalculate-code.window="generate()" x-init="initComponent()"
     class="">
     <h4 class="text-sm font-bold  uppercase mb-2 flex items-center gap-2">
-        {{ $question->label }} <span x-text="code"></span>
+        {{ $question->label }} <span class="text-red-400" x-text="code"></span>
     </h4>
 
     <input type="hidden" name="answers[{{ $question->id }}]" x-model="code">
-
+    {{-- 
     <p class="text-xs text-blue-400 mt-2">
         * Generado con datos de: <strong>{{ $staticName }}</strong>
     </p>
+     --}}
 </div>
 
 <script>
