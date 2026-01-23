@@ -39,7 +39,7 @@
     <h4 class="text-sm font-bold  uppercase mb-2 flex items-center gap-2">
         {{ $question->label }} <span x-text="code"></span>
     </h4>
-    
+
     <input type="hidden" name="answers[{{ $question->id }}]" x-model="code">
 
     <p class="text-xs text-blue-400 mt-2">
@@ -95,17 +95,17 @@
                 // --- CÓDIGO BASE ---
                 let baseCode = `${this.userId}_${initials}_${this.year}_${typeVal}`;
 
-                console.log('⏳ Consultando disponibilidad para:', baseCode);
-
                 // --- 2. CONSULTA AL SERVIDOR (LA NOVEDAD) ---
                 // Llamamos a la ruta que creamos en el Paso 1
                 try {
                     this.isLoading = true;
 
                     // Construimos la URL. Ajusta '/api/validate-folio' si usaste otro prefijo
-                    let url =
-                        `/api/validate-folio?code=${encodeURIComponent(baseCode)}&question_id=${this.questionId}`;
-
+                    const url = new URL("{{ route('api.validate.folio') }}");
+                    url.search = new URLSearchParams({
+                        code: baseCode,
+                        question_id: this.questionId
+                    });
                     // Si tenemos entryId (edición), lo enviamos para no bloquearnos a nosotros mismos
                     if (this.entryId) url += `&entry_id=${this.entryId}`;
 
@@ -114,7 +114,6 @@
 
                     // --- 3. ACTUALIZAMOS CON EL CÓDIGO ÚNICO ---
                     this.code = data.unique_code;
-                    console.log('✅ Código Único Asignado:', this.code);
 
                 } catch (error) {
                     console.error('Error validando folio:', error);
