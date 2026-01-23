@@ -12,4 +12,10 @@ class ViewDatosGenerales extends Model
     // Como es una vista, no se puede insertar/editar
     public $incrementing = false;
     public $timestamps = false;
+    protected $primaryKey = 'user_id';
+
+    protected $casts = [
+        'datos_json' => 'array',
+        'fecha_registro' => 'datetime',
+    ];
 }

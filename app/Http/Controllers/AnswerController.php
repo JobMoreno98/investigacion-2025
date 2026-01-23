@@ -63,6 +63,7 @@ class AnswerController extends Controller
      */
     public function show($id)
     {
+        
         $seccion = Sections::with('questions')->where('id', $id)->first();
 
         return view('respuestas.create', compact('seccion'));

@@ -118,7 +118,23 @@ class SectionsForm
                             ->helperText('Este valor aparecerá prellenado si el usuario no ha respondido.')
                             // Ocultarlo en archivos, ya que no puedes prellenar un input file por seguridad
                             ->hidden(fn($get) => $get('type') === 'file'),
+
+                        Select::make('options.code_tag')
+                            ->label('Etiqueta para Generación de Código')
+                            ->options([
+                                null => 'Ninguno',
+                                'source_name' => 'Fuente: Nombre (Para Iniciales)',
+                                'source_year' => 'Fuente: Año',
+                                'source_type' => 'Fuente: Tipo',
+                                'generated_code' => 'Destino: Código Generado', // <--- La pregunta donde se guardará
+                            ])
+                            ->nullable() // Permite explícitamente valores nulos en la validación
+
+                            ->native(false)
+                            ->placeholder('Ninguna')
+                            ->helperText('Usa esto para conectar preguntas entre sí.'),
                     ]),
+
 
                 ])
                 ->orderable('sort_order')

@@ -17,6 +17,7 @@
         </a>
 
         <flux:navbar class="-mb-px max-lg:hidden">
+           
             <livewire:navigation-bar />
 
         </flux:navbar>

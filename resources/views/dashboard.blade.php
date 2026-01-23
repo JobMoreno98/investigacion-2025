@@ -1,18 +1,35 @@
 <x-layouts.app :title="__('Dashboard')">
     <div class="flex h-full w-full flex-1 flex-col gap-4 rounded-xl">
-        <div class="grid auto-rows-min gap-4 md:grid-cols-3">
-            <div class="relative aspect-video overflow-hidden rounded-xl border border-neutral-200 dark:border-neutral-700">
-                <x-placeholder-pattern class="absolute inset-0 size-full stroke-gray-900/20 dark:stroke-neutral-100/20" />
-            </div>
-            <div class="relative aspect-video overflow-hidden rounded-xl border border-neutral-200 dark:border-neutral-700">
-                <x-placeholder-pattern class="absolute inset-0 size-full stroke-gray-900/20 dark:stroke-neutral-100/20" />
-            </div>
-            <div class="relative aspect-video overflow-hidden rounded-xl border border-neutral-200 dark:border-neutral-700">
-                <x-placeholder-pattern class="absolute inset-0 size-full stroke-gray-900/20 dark:stroke-neutral-100/20" />
-            </div>
-        </div>
-        <div class="relative h-full flex-1 overflow-hidden rounded-xl border border-neutral-200 dark:border-neutral-700">
-            <x-placeholder-pattern class="absolute inset-0 size-full stroke-gray-900/20 dark:stroke-neutral-100/20" />
-        </div>
+        <flux:heading size="lg">
+            Bienvenido, {{ auth()->user()->name }}
+        </flux:heading>
+
+        {{-- 🔔 NOTIFICACIÓN --}}
+        @if ($mustFillDatosGenerales)
+            <flux:callout type="warning" class="mt-4">
+                <flux:callout.heading>
+                    Atención requerida
+                </flux:callout.heading>
+
+                <flux:callout.text>
+                    Debes completar tus <strong>Datos generales</strong> para continuar.
+                </flux:callout.text>
+
+                
+                <flux:button href="{{ route('categorias.show', $datosGeneralesCategoryId ?? 1) }}" variant="primary">
+                    Completar ahora
+                </flux:button>
+
+            </flux:callout>
+        @endif
+
+        {{-- CONTENIDO NORMAL 
+        <flux:card class="mt-6">
+            <flux:heading size="sm">Resumen</flux:heading>
+            <flux:text>
+                Aquí va el contenido normal del dashboard.
+            </flux:text>
+        </flux:card>
+        --}}
     </div>
 </x-layouts.app>

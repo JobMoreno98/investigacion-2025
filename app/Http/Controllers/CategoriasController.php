@@ -33,22 +33,23 @@ class CategoriasController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show($id)
+    public function show(Categorias $categoria)
     {
-        $categoria = Categorias::with('secciones')->where('id', $id)->first();
         if (!isset($categoria->titulo)) {
             abort(403, 'El registro no existe.');
         }
+
         if ($categoria->titulo == 'Datos Generales') {
             $datos = AnswerFullView::select('entry_id')
                 ->where('user_id', Auth::id()) // Es mas corto usar Auth::id()
                 ->where('section_title', 'Datos Generales')
                 ->first();
+
             if ($datos) {
                 return redirect()->route('answers.edit', $datos->entry_id);
             } else {
                 $seccion = $categoria->secciones->first();
-
+                
                 if ($seccion) {
                     return redirect()->route('answers.show', $seccion->id);
                 }

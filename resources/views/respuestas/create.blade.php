@@ -1,16 +1,18 @@
 @php
     $titlePage = 'Crear - ' . $seccion->title;
 @endphp
+
 <x-layouts.app :title="$titlePage">
     <div class="container m-auto">
         <div class="max-w-7xl mx-auto py-10 px-4">
 
             {{-- Muestra mensaje de éxito si existe --}}
             @if (session('success'))
-                <div class="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-6">
+                <x-alert type="success">
                     {{ session('success') }}
-                </div>
+                </x-alert>
             @endif
+
             {{--  
             @if ($errors->any())
                 <div class="alert alert-danger">
@@ -30,10 +32,13 @@
 
                     <input type="hidden" name="section_ids[]" value="{{ $seccion->id }}">
 
+                    <input type="hidden" name="categoria_id" value="{{ $seccion->categoria_id }}">
+
                     <h3 class="font-semibold text-gray-800">{{ $seccion->title }}</h3>
                     @if ($seccion->description)
                         <p class="text-gray-500 text-sm mb-4">{{ $seccion->description }}</p>
                     @endif
+
                     <div class="space-y-5 mt-4  grid grid-cols-1 md:grid-cols-2 gap-4 items-center content-center">
                         @foreach ($seccion->questions as $question)
                             @php
@@ -45,8 +50,20 @@
                             @endphp
 
                             @php
-                                // Mapeo de seguridad: Si el tipo no tiene componente, usa 'text' por defecto
-                                $componentName = 'inputs.' . $question->type;
+                                $isGeneratedCode = ($question->options['code_tag'] ?? '') === 'generated_code';
+
+                                if ($isGeneratedCode) {
+                                    // ¡ALTO! Es una pregunta especial. Forzamos el componente de sistema.
+                                    // Asegúrate de que el archivo sea resources/views/components/inputs/system-code.blade.php
+                                    $componentName = 'inputs.system-code';
+                                } else {
+                                    // 2. LÓGICA ESTÁNDAR
+                                    // Si no es especial, usamos su tipo de base de datos (text, select, date...)
+                                    $componentName = 'inputs.' . $question->type;
+                                }
+
+                                // 3. SEGURIDAD (FALLBACK)
+                                // Si el componente (system-code o el tipo normal) no existe físicamente, usamos 'text'
                                 if (!view()->exists("components.{$componentName}")) {
                                     $componentName = 'inputs.text';
                                 }
@@ -111,7 +128,7 @@
                             @endswitch
                         @endforeach
                     </div>
-                    <div class="flex justify-center mt-4">
+                    <div class="flex justify-center mt-4 col-span-2">
                         <button type="submit"
                             class="bg-blue-600 text-xs hover:bg-blue-700 text-white font-bold py-1 px-4 rounded shadow-lg transition duration-150">
                             Guardar

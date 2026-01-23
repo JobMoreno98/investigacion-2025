@@ -40,5 +40,6 @@ class DatabaseSeeder extends Seeder
         $this->call(DataSeeder::class);
         $this->call(ProgramasAcademicosSeeder::class);
         $this->call(DivisionesDepartamentosSeeder::class);
+        $this->call(ProyectosInvestigacion::class);
     }
 }
