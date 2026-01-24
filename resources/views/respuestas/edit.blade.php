@@ -20,7 +20,7 @@
                 </div>
             @endif
 
-            <form action="{{ route('answers.update', $entry->id) }}" method="POST" enctype="multipart/form-data">
+            <form action="{{ route('answers.update', $entry->id) }}" method="POST" enctype="multipart/form-data" class="bg-white shadow-lg rounded-lg p-6 border-t-2 border-blue-500">
                 @csrf
                 @method('PUT')
                 <div class="space-y-5 mt-4  grid grid-cols-1 md:grid-cols-2 gap-4 items-center content-center">
@@ -34,8 +34,12 @@
                             $savedValue = $existingAnswers[$question->id] ?? null;
                             $defaultValue = $question->options['default_value'] ?? '';
                             $finalValue = old($errorKey, $savedValue ?? $defaultValue);
-                        @endphp
 
+                            $componentName = 'inputs.' . $question->type;
+                            if (!view()->exists("components.{$componentName}")) {
+                                $componentName = 'inputs.text';
+                            }
+                        @endphp
 
                         @php
                             $isGeneratedCode = ($question->options['code_tag'] ?? '') === 'generated_code';
@@ -50,12 +54,66 @@
                                 $componentName = 'inputs.' . $question->type;
                             }
 
+                            // 3. SEGURIDAD (FALLBACK)
+                            // Si el componente (system-code o el tipo normal) no existe físicamente, usamos 'text'
                             if (!view()->exists("components.{$componentName}")) {
                                 $componentName = 'inputs.text';
                             }
                         @endphp
-                        <x-dynamic-component :component="$componentName" :question="$question" :value="$finalValue" />
+                        @if ($question->type != 'sub_form')
+                            <x-dynamic-component :component="$componentName" :question="$question" :value="$finalValue" />
+                        @endif
+
+                        {{-- Sub_form --}}
+                        @if ($question->type === 'sub_form')
+                            @php
+                                $targetSectionId = $question->options['target_section_id'];
+                                $childSection = \App\Models\Sections::with('questions')->find($targetSectionId);
+
+                                // Entry del sub_form (nuevo o existente)
+                                $childEntryId = $existingAnswers[$question->id] ?? null;
+
+                                $childAnswers = [];
+                                if ($childEntryId) {
+                                    $childEntry = \App\Models\Entry::with('answers')->find($childEntryId);
+                                    $childAnswers = $childEntry->answers->pluck('value', 'question_id')->toArray();
+                                }
+                            @endphp
+
+                            @if ($childSection)
+                                <div
+                                    class="col-span-2 space-y-5 mt-1 border border-stone-400 rounded p-2  grid grid-cols-1 md:grid-cols-2 gap-4 items-center content-center">
+                                    <h4 class="col-span-2 text-blue-800 font-bold mb-3 border-b-2 border-blue-500">
+                                        {{ $childSection->title }}
+                                    </h4>
+
+                                    @foreach ($childSection->questions as $childQ)
+                                        @php
+                                            $childInputName = "sub_answers[{$question->id}][{$childQ->id}]";
+                                            $childErrorKey = "sub_answers.{$question->id}.{$childQ->id}";
+
+                                            $childValue = old(
+                                                $childErrorKey,
+                                                $childAnswers[$childQ->id] ?? ($childQ->options['default_value'] ?? ''),
+                                            );
+
+                                            $childComponent = 'inputs.' . $childQ->type;
+                                            if (!view()->exists("components.{$childComponent}")) {
+                                                $childComponent = 'inputs.text';
+                                            }
+                                        @endphp
+
+                                        <div class="mb-3">
+                                            <x-dynamic-component :component="$childComponent" :question="$childQ" :value="$childValue"
+                                                :name="(string) $childInputName" />
+                                        </div>
+                                    @endforeach
+                                </div>
+                            @endif
+                        @endif
                     @endforeach
+
+
 
                     <div class="flex justify-center mt-4 col-span-2">
                         <button type="submit"

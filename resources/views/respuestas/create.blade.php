@@ -13,7 +13,7 @@
                 </x-alert>
             @endif
 
-            {{--  
+
             @if ($errors->any())
                 <div class="alert alert-danger">
                     <ul>
@@ -23,7 +23,7 @@
                     </ul>
                 </div>
             @endif
---}}
+
             {{-- IMPORTANTE: enctype es necesario para subir archivos --}}
             <form action="{{ route('answers.store') }}" method="POST" enctype="multipart/form-data" class="space-y-8">
                 @csrf
@@ -39,7 +39,7 @@
                         <p class="text-gray-500 text-sm mb-4">{{ $seccion->description }}</p>
                     @endif
 
-                    <div class="space-y-5 mt-4  grid grid-cols-1 md:grid-cols-2 gap-4 items-center content-center">
+                    <div class="space-y-5 mt-4  grid grid-cols-1 md:grid-cols-2 gap-4 items-center content-center ">
                         @foreach ($seccion->questions as $question)
                             @php
                                 $fieldName = "answers[{$question->id}]";
@@ -68,7 +68,10 @@
                                     $componentName = 'inputs.text';
                                 }
                             @endphp
-                            <x-dynamic-component :component="$componentName" :question="$question" :value="$finalValue" />
+                            @if ($question->type != 'sub_form')
+                                <x-dynamic-component :component="$componentName" :question="$question" :value="$finalValue" />
+                            @endif
+
                             @switch($question->type)
                                 @case('sub_form')
                                     @php
@@ -91,35 +94,35 @@
                                                 ->toArray();
                                         }
                                     @endphp
-
                                     @if ($childSection)
-                                        <div class="border-l-4 border-blue-500 pl-4 ml-2 my-4 bg-gray-50 p-4 rounded">
-                                            <h4 class="text-blue-800 font-bold mb-3">{{ $childSection->title }}
-                                            </h4>
+                                        <div class="col-span-2 space-y-5 mt-4 border border-stone-400 rounded p-2  grid grid-cols-1 md:grid-cols-2 gap-4 items-center content-center">
+                                            <h4 class="col-span-2 text-blue-800 font-bold mb-3 border-b-2 border-blue-500">{{ $childSection->title }} </h4>
 
                                             {{-- Iteramos las preguntas de la sección HIJA --}}
                                             @foreach ($childSection->questions as $childQ)
                                                 @php
-                                                    // NAMING CRÍTICO: sub_answers[PADRE][HIJO]
+                                                    // Nombre correcto del campo
                                                     $childInputName = "sub_answers[{$question->id}][{$childQ->id}]";
 
-                                                    // Recuperamos valor: old > guardado > default
+                                                    // Valor (old > guardado > default)
                                                     $childValue = old(
                                                         "sub_answers.{$question->id}.{$childQ->id}",
-                                                        $childAnswers[$childQ->id] ?? '',
+                                                        $childAnswers[$childQ->id] ??
+                                                            ($childQ->options['default_value'] ?? ''),
                                                     );
+
+                                                    // Componente correcto según el tipo del HIJO
+                                                    $childComponent = 'inputs.' . $childQ->type;
+
+                                                    // Fallback de seguridad
+                                                    if (!view()->exists("components.{$childComponent}")) {
+                                                        $childComponent = 'inputs.text';
+                                                    }
                                                 @endphp
 
                                                 <div class="mb-3">
-                                                    <label class="block text-sm text-gray-600">{{ $childQ->label }}</label>
-
-                                                    {{-- Renderizado simplificado (copia tu switch grande aquí) --}}
-                                                    @if ($childQ->type === 'text')
-                                                        <input type="text" name="{{ $childInputName }}"
-                                                            value="{{ $childValue }}" class="form-input w-full">
-                                                    @elseif($childQ->type === 'select')
-                                                        {{-- ... tu lógica de select ... --}}
-                                                    @endif
+                                                    <x-dynamic-component :component="$childComponent" :question="$childQ" :value="$childValue"
+                                                        :name="$childInputName" />
                                                 </div>
                                             @endforeach
                                         </div>

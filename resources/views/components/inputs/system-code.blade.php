@@ -35,7 +35,7 @@
     staticName: '{!! $staticNameSafe !!}'
     {{-- Usamos {!! !!} porque ya aplicamos addslashes --}}
 })" x-on:recalculate-code.window="generate()" x-init="initComponent()"
-    class="">
+    class="" :helper-text="$question->helper_text">
     <h4 class="text-sm font-bold  uppercase mb-2 flex items-center gap-2">
         {{ $question->label }} <span class="text-red-400" x-text="code"></span>
     </h4>

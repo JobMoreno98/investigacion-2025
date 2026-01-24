@@ -23,6 +23,7 @@ class Sections extends Model
     {
         return $this->hasMany(Questions::class, 'section_id')->orderBy('sort_order');
     }
+    
     public function getUserEntriesAttribute()
     {
         return \App\Models\Entry::query()
@@ -33,4 +34,7 @@ class Sections extends Model
             ->with('answers.question') // Eager loading para optimizar
             ->get();
     }
+    protected $casts = [
+        'investigacion' => 'boolean',
+    ];
 }

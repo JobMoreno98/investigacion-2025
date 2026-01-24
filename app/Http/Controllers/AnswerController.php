@@ -7,6 +7,7 @@ use App\Models\Answer;
 use App\Models\Entry;
 use App\Models\Sections;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class AnswerController extends Controller
 {
@@ -35,27 +36,74 @@ class AnswerController extends Controller
     {
         $validated = $request->validated();
 
-        // 1. Crear el Entry (El contenedor del envío)
-        $entry = Entry::create([
-            'user_id' => Auth::user()->id, // o null si es anónimo
-        ]);
+        // Usamos DB::transaction para seguridad (evita datos huérfanos si algo falla)
+        $mainEntry = DB::transaction(function () use ($request, $validated) {
 
-        // 2. Guardar las respuestas vinculadas a ese Entry
-        foreach ($validated['answers'] as $questionId => $value) {
-            // Lógica de archivos (igual que antes)
-            if ($request->hasFile("answers.{$questionId}")) {
-                $value = $request->file("answers.{$questionId}")->store('uploads', 'public');
+            // 1. CREAR EL ENTRY PRINCIPAL (PADRE)
+            $entry = Entry::create([
+                'user_id' => Auth::id(),
+                // 'is_editable' => true, // Si usas este campo
+            ]);
+
+            // 2. GUARDAR RESPUESTAS NORMALES (Nivel Padre)
+            if (!empty($validated['answers'])) {
+                foreach ($validated['answers'] as $questionId => $value) {
+
+                    // A. Lógica de Archivos (Padre)
+                    if ($request->hasFile("answers.{$questionId}")) {
+                        $value = $request->file("answers.{$questionId}")->store('uploads', 'public');
+                    }
+
+                    // B. Guardar Respuesta
+                    $entry->answers()->create([
+                        'question_id' => $questionId,
+                        'value' => $value,
+                    ]);
+                }
             }
 
-            // Usamos la relación para crear (asumiendo que definiste hasMany en Entry)
-            $entry->answers()->create([
-                'question_id' => $questionId,
-                'value' => $value,
-            ]);
-        }
+            // 3. GUARDAR SUB-FORMULARIOS (Nivel Hijo)
+            // Estructura: sub_answers[ID_PREGUNTA_PADRE][ID_PREGUNTA_HIJA] = VALOR
+            if (!empty($validated['sub_answers'])) {
+                foreach ($validated['sub_answers'] as $parentQuestionId => $childData) {
 
-        return redirect()->route('answers.edit', $entry->id)->with('success', 'Registrado correctamente.');
-        //return back()->with('success', 'Enviado correctamente');
+                    // A. Crear el Entry "Hijo" (El contenedor de la sub-sección)
+                    // Se crea igual que el padre, solo cambia su contenido
+                    $childEntry = Entry::create([
+                        'user_id' => Auth::id(),
+                    ]);
+
+                    // B. VINCULAR PADRE CON HIJO
+                    // En la pregunta 31 del Padre, guardamos el ID del Entry Hijo (ej: "502")
+                    $entry->answers()->create([
+                        'question_id' => $parentQuestionId, // Ej: 31
+                        'value' => $childEntry->id,         // Aquí está la magia
+                    ]);
+
+                    // C. Guardar las Respuestas del Hijo
+                    foreach ($childData as $childQuestionId => $childValue) {
+
+                        // Lógica de Archivos (Hijo)
+                        // Nota el nombre del input: sub_answers.31.26
+                        if ($request->hasFile("sub_answers.{$parentQuestionId}.{$childQuestionId}")) {
+                            $childValue = $request->file("sub_answers.{$parentQuestionId}.{$childQuestionId}")
+                                ->store('uploads', 'public');
+                        }
+
+                        // Guardamos vinculado al ENTRY HIJO, no al padre
+                        $childEntry->answers()->create([
+                            'question_id' => $childQuestionId,
+                            'value' => is_array($childValue) ? json_encode($childValue) : $childValue,
+                        ]);
+                    }
+                }
+            }
+
+            return $entry; // Retornamos el entry para usarlo en el redirect
+        });
+
+        return redirect()->route('answers.edit', $mainEntry->id)
+            ->with('success', 'Registrado correctamente.');
     }
 
     /**
@@ -63,7 +111,7 @@ class AnswerController extends Controller
      */
     public function show($id)
     {
-        
+
         $seccion = Sections::with('questions')->where('id', $id)->first();
 
         return view('respuestas.create', compact('seccion'));
@@ -115,51 +163,103 @@ class AnswerController extends Controller
     public function update(StoreSurveyRequest $request, $id)
     {
         $entry = Entry::findOrFail($id);
-        if (! $entry->is_editable) {
-            abort(403, 'El registro está bloqueado.');
-        }
-        // Seguridad
-        if ($entry->user_id !== Auth::user()->id) {
-            abort(403);
-        }
-
         $validated = $request->validated();
 
-        foreach ($validated['answers'] as $questionId => $value) {
+        DB::transaction(function () use ($request, $validated, $entry) {
 
-            $question = \App\Models\Questions::find($questionId);
-            // Lógica especial para Archivos en Edición
-            if ($question->type === 'file') {
+            // ... (PARTE 1: RESPUESTAS PADRE - SE MANTIENE IGUAL) ...
+            if (!empty($validated['answers'])) {
+                foreach ($validated['answers'] as $questionId => $value) {
+                    // ... Lógica de archivos y guardado normal ...
+                    if ($request->hasFile("answers.{$questionId}")) {
+                        $value = $request->file("answers.{$questionId}")->store('uploads', 'public');
+                    } elseif ($value === null) {
+                        $q = \App\Models\Questions::find($questionId);
+                        if ($q && $q->type === 'file' && $entry->answers()->where('question_id', $questionId)->exists()) {
+                            continue;
+                        }
+                    }
 
-                // A. ¿El usuario subió un archivo nuevo?
-                if ($request->hasFile("answers.{$questionId}")) {
-                    // Subimos y actualizamos la variable $value con la ruta
-                    $path = $request->file("answers.{$questionId}")->store('uploads', 'public');
-                    $value = $path;
-                }
-                // B. ¿No subió nada?
-                else {
-                    // IMPORTANTE: Si es archivo y no enviaron nada nuevo,
-                    // saltamos el ciclo para NO sobrescribir con NULL la BD.
-                    continue;
+                    Answer::updateOrCreate(
+                        ['entry_id' => $entry->id, 'question_id' => $questionId],
+                        ['value' => $value]
+                    );
                 }
             }
 
-            // USAMOS UpdateOrCreate
-            // Busca si ya existe una respuesta para este entry y esta pregunta.
-            // Si existe, actualiza el valor. Si no (ej: pregunta nueva), la crea.
-            Answer::updateOrCreate(
-                [
-                    'entry_id' => $entry->id,
-                    'question_id' => $questionId,
-                ],
-                [
-                    'value' => $value,
-                ]
-            );
-        }
+            // =========================================================
+            // PARTE 2: SUB-FORMULARIOS (CORREGIDO PARA TU TABLA ENTRIES)
+            // =========================================================
+            if (!empty($validated['sub_answers'])) {
 
-        return redirect()->route('answers.edit', $entry->id)->with('success', 'Registro actualizado correctamente.');
+                foreach ($validated['sub_answers'] as $parentQId => $incomingChildData) {
+
+                    // 1. Obtenemos la Pregunta Padre para saber la SECCIÓN DESTINO
+                    // Como 'entries' no guarda la sección, necesitamos sacarla de aquí.
+                    $parentQuestion = \App\Models\Questions::find($parentQId);
+                    $targetSectionId = $parentQuestion->options['target_section_id'] ?? null;
+
+                    if (!$targetSectionId) continue; // Si no está configurada, saltamos
+
+                    // 2. Buscamos o Creamos el Entry Hijo
+                    $linkAnswer = Answer::where('entry_id', $entry->id)
+                        ->where('question_id', $parentQId)
+                        ->first();
+
+                    $childEntry = $linkAnswer ? Entry::find($linkAnswer->value) : null;
+
+                    if (!$childEntry) {
+                        // CREACIÓN: Solo ID y User_ID
+                        $childEntry = Entry::create([
+                            'user_id' => Auth::id(),
+                            // 'section_id' => ... ELIMINADO (No existe en tu tabla)
+                            // 'status' => ... ELIMINADO
+                        ]);
+
+                        // Vinculamos al padre
+                        Answer::updateOrCreate(
+                            ['entry_id' => $entry->id, 'question_id' => $parentQId],
+                            ['value' => $childEntry->id]
+                        );
+                    }
+
+                    // 3. GUARDADO DE RESPUESTAS (Iterando sobre el Schema, no el Input)
+                    if ($childEntry) {
+
+                        // CORRECCIÓN: Usamos $targetSectionId que obtuvimos arriba
+                        // en lugar de $childEntry->section_id
+                        $childQuestions = \App\Models\Questions::where('section_id', $targetSectionId)->get();
+
+                        foreach ($childQuestions as $question) {
+                            $childQId = $question->id;
+                            $value = $incomingChildData[$childQId] ?? null;
+
+                            // A. Repeater vacío -> Array vacío
+                            if ($value === null && in_array($question->type, ['repeater', 'repeater_awards'])) {
+                                $value = [];
+                            }
+
+                            // B. Archivos
+                            if ($request->hasFile("sub_answers.{$parentQId}.{$childQId}")) {
+                                $value = $request->file("sub_answers.{$parentQId}.{$childQId}")->store('uploads', 'public');
+                            } elseif ($question->type === 'file' && $value === null) {
+                                if ($childEntry->answers()->where('question_id', $childQId)->exists()) {
+                                    continue;
+                                }
+                            }
+
+                            // C. Guardar
+                            Answer::updateOrCreate(
+                                ['entry_id' => $childEntry->id, 'question_id' => $childQId],
+                                ['value' => is_array($value) ? json_encode($value) : $value]
+                            );
+                        }
+                    }
+                }
+            }
+        });
+
+        return redirect()->route('answers.edit', $entry->id)->with('success', 'Actualizado correctamente.');
     }
 
     /**

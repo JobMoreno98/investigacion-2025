@@ -6,7 +6,7 @@
         </p>
 
 
-        @foreach ($categoria->secciones as $key => $value)
+        @foreach ($categoria->secciones->where('investigacion', false) as $key => $value)
             <div class="p-3 my-4 text-stone-900 rounded-sm border-1 border-b-indigo-500">
                 {{ $value->title }} <br>
                 <x-flux::button size="xs" :href="route('answers.show', $value->id)"> Agregar
@@ -42,7 +42,7 @@
 
                                     <div class="flex space-x-3">
                                         <div class="flex space-x-3">
-                                            
+
                                             <a href="{{ route('answers.edit', $entry->id) }}"
                                                 class="text-black-600 hover:text-indigo-900 text-sm font-medium">
                                                 <flux:icon.printer variant="mini" />

@@ -10,7 +10,7 @@
     $codeTag = $question->options['code_tag'] ?? null;
 @endphp
 
-<x-inputs.wrapper :label="$question->label" :name="$errorKey" :required="$question->is_required">
+<x-inputs.wrapper :label="$question->label" :name="$errorKey" :required="$question->is_required" :helper-text="$question->helper_text">
     
     <div @if($enableSearch) wire:ignore @endif>
         <select 

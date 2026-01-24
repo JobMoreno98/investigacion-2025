@@ -21,6 +21,7 @@ class SectionsTable
                 TextColumn::make('title')->label('Título')->searchable(),
                 // TextColumn::make('description')->label('Descripción')->wrap(),
                 TextColumn::make('categorias.titulo')->label('Categoria'),
+                TextColumn::make('description')->label('Descripción')
             ])
             ->filters([
                 // TrashedFilter::make(),

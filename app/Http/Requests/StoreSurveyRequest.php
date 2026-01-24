@@ -19,175 +19,214 @@ class StoreSurveyRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      */
+
+
     public function rules(): array
     {
         $rules = [];
+        $answers = $this->input('answers');
+        $subAnswers = $this->input('sub_answers');
 
-        // 1. Validamos que los section_ids sean válidos primero (seguridad)
-        // Esto asegura que 'section_ids' sea un array y exista en la tabla sections
+
+        // 1. Validaciones Estructurales (Base)
         $rules['section_ids'] = 'required|array';
         $rules['section_ids.*'] = 'exists:sections,id';
+        $rules['answers'] = 'array';
+        $rules['sub_answers'] = 'nullable|array';
 
-        // 2. Obtenemos SOLO las preguntas de las secciones enviadas
+        // 2. Obtenemos preguntas
         $targetSections = $this->input('section_ids', []);
+        $questions = \App\Models\Questions::whereIn('section_id', $targetSections)->get();
 
-        // AQUÍ ESTÁ LA MAGIA: Usamos whereIn
-        $questions = Questions::whereIn('section_id', $targetSections)
-            //->where('is_active', true)
-            ->get();
-
+        // 3. Reglas para preguntas NORMALES (Array 'answers')
         foreach ($questions as $question) {
-            // La clave que envía el HTML es answers[ID], para validación es answers.ID
             $fieldKey = 'answers.' . $question->id;
-
             $fieldRules = [];
 
-            // ---------------------------------------------------------
-            // A. Regla Base: Requerido o Nullable
-            // ---------------------------------------------------------
-            if ($question->type !== 'file') {
+            // A. Regla base (Requerido/Nullable)
+            // Ignoramos 'sub_form' aquí porque su valor real viaja en 'sub_answers'
+            if ($question->type !== 'file' && $question->type !== 'sub_form') {
                 $fieldRules[] = $question->is_required ? 'required' : 'nullable';
+            } else {
+                $fieldRules[] = 'nullable';
             }
 
+            // B. Regla Única (Tu lógica existente se mantiene igual)
             if ($question->is_unique) {
-
-                // 1. Iniciamos la regla básica: Busca en tabla 'answers', columna 'value'
-                // y filtra solo por la pregunta actual.
-                $uniqueRule = \Illuminate\Validation\Rule::unique('answers', 'value')
-                    ->where('question_id', $question->id);
-
-                // 2. EXCEPCIÓN VITAL: Si estamos EDITANDO, ignoramos el entry actual
+                $uniqueRule = Rule::unique('answers', 'value')->where('question_id', $question->id);
                 if ($this->isMethod('put') || $this->isMethod('patch')) {
-
-                    // A. Obtenemos el parámetro de la ruta.
-                    // OJO: Verifica en tus rutas si se llama {entry} o {id}
-                    // Route::put('/survey/{entry}', ...) -> Se llama 'entry'
-                    $entryRouteParam = $this->route('answer');
-
-                    // B. Extraemos el ID numérico de forma segura
-                    // (A veces Laravel te da el Objeto completo, a veces solo el ID string)
+                    $entryRouteParam = $this->route('answer'); // O 'entry', verifica tu ruta
                     $entryIdToIgnore = ($entryRouteParam instanceof \Illuminate\Database\Eloquent\Model)
                         ? $entryRouteParam->id
                         : $entryRouteParam;
-
-                    // C. Aplicamos la exclusión: "Donde entry_id NO sea el actual"
                     if ($entryIdToIgnore) {
                         $uniqueRule->whereNot('entry_id', $entryIdToIgnore);
                     }
                 }
-
                 $fieldRules[] = $uniqueRule;
             }
 
-
-            // ---------------------------------------------------------
-            // B. Reglas según el Tipo de Pregunta
-            // ---------------------------------------------------------
+            // C. Reglas por Tipo
             switch ($question->type) {
-
-                // --- TEXTO Y TEXTAREA ---
                 case 'text':
                 case 'textarea':
                     $fieldRules[] = 'string';
                     $fieldRules[] = 'max:65535';
                     break;
-
-                // --- NÚMERO ---
                 case 'number':
-                    $fieldRules[] = 'numeric';
+                    $fieldRules[] = 'integer';
+                    $fieldRules[] = 'min:0';
                     break;
-
-                // --- SELECT / LISTA ---
                 case 'select':
-                    // ANTES (KeyValue): 
-                    // $validKeys = implode(',', array_keys($question->options['choices']));
-
-                    // AHORA (Repeater):
-                    // La estructura es un array de arrays. Usamos array_column para sacar los 'value'.
                     $choices = $question->options['choices'] ?? [];
-
                     if (!empty($choices)) {
-                        // Extraemos solo la columna 'value' del array de opciones
-                        $values = array_column($choices, 'value');
-                        $validKeys = implode(',', $values);
-
-                        $fieldRules[] = 'in:' . $validKeys;
+                        // MEJORA: Usamos Rule::in para evitar errores con comas
+                        $fieldRules[] = Rule::in(array_column($choices, 'value'));
                     }
                     break;
-
-                // --- ARCHIVOS ---
                 case 'file':
+                    // Validación estricta de archivos
                     $fieldRules[] = 'file';
-                    $fieldRules[] = 'max:10240';
+                    $fieldRules[] = 'max:10240'; // 10MB
+                    // Si es PUT (edición), el archivo no es obligatorio si ya existe uno (lógica de negocio)
+                    // Pero aquí asumimos nullable en PUT para no obligar a resubir
+                    $fieldRules[] = $this->isMethod('put') ? 'nullable' : ($question->is_required ? 'required' : 'nullable');
 
-                    // Lógica de Edición vs Creación
-                    if ($this->isMethod('put') || $this->isMethod('patch')) {
-                        // Al editar, siempre es opcional (para no obligar a resubir)
-                        $fieldRules[] = 'nullable';
-                    } else {
-                        // Al crear, respetamos si es required
-                        $fieldRules[] = $question->is_required ? 'required' : 'nullable';
-                    }
-
-                    // CORRECCIÓN DE SEGURIDAD:
-                    // Usamos '??' para evitar error si 'allowed_formats' no existe
-                    $allowedFormats = $question->options['allowed_formats'] ?? null;
-
-                    if (! empty($allowedFormats)) {
-                        $formats = str_replace(' ', '', $allowedFormats);
-                        $fieldRules[] = 'mimes:' . $formats;
-                    } else {
-                        // Default seguro
-                        $fieldRules[] = 'mimes:pdf';
-                    }
+                    $allowedFormats = $question->options['allowed_formats'] ?? 'pdf';
+                    $fieldRules[] = 'mimes:' . str_replace(' ', '', $allowedFormats);
                     break;
-
-                // --- FECHAS (Con lógica dinámica de min/max) ---
                 case 'date':
                     $fieldRules[] = 'date';
-
-                    // Si el admin configuró 'min_date' en Filament
-                    if (! empty($question->options['min_date'])) {
-                        // after_or_equal:today funciona nativamente en Laravel
-                        $fieldRules[] = 'after_or_equal:' . $question->options['min_date'];
-                    }
-
-                    // Si el admin configuró 'max_date' en Filament
-                    if (! empty($question->options['max_date'])) {
-                        $fieldRules[] = 'before_or_equal:' . $question->options['max_date'];
-                    }
+                    if (!empty($question->options['min_date'])) $fieldRules[] = 'after_or_equal:' . $question->options['min_date'];
+                    if (!empty($question->options['max_date'])) $fieldRules[] = 'before_or_equal:' . $question->options['max_date'];
                     break;
-                // ... dentro del switch($question->type) ...
-
                 case 'catalog':
                     $catalogName = $question->options['catalog_name'] ?? '';
-
-                    // Obtenemos las opciones válidas del Helper
                     $validOptions = \App\Helpers\CatalogProvider::get($catalogName);
-
                     if (!empty($validOptions)) {
-                        // Obtenemos los IDs permitidos (las llaves del array)
-                        $validKeys = array_keys($validOptions);
-
-                        // Convertimos a string por si son IDs numéricos
-                        $validKeysStr = implode(',', $validKeys);
-
-                        // Regla: El valor enviado debe estar dentro de las llaves permitidas
-                        $fieldRules[] = 'in:' . $validKeysStr;
+                        $fieldRules[] = Rule::in(array_keys($validOptions));
                     } else {
-                        // Seguridad: Si el catálogo está vacío o no existe, fallamos la validación
-                        // para evitar que guarden basura.
+                        // Si el catálogo no existe o está vacío, prohibimos la entrada por seguridad
                         $fieldRules[] = 'prohibited';
                     }
                     break;
+                case 'repeater_awards':
+                    $fieldRules[] = 'array';
+
+                    // Reglas internas
+                    $rules["{$fieldKey}.*.nombre"] = 'required|string|max:255';
+
+                    // VALIDACIÓN DINÁMICA DEL SELECT
+                    // Extraemos los valores válidos de las opciones de la pregunta
+                    $validChoices = array_column($question->options['choices'] ?? [], 'value');
+
+                    if (!empty($validChoices)) {
+                        // Usamos Rule::in para mayor seguridad
+                        $rules["{$fieldKey}.*.tipo"] = ['required', \Illuminate\Validation\Rule::in($validChoices)];
+                    } else {
+                        // Fallback por si no configuraron opciones
+                        $rules["{$fieldKey}.*.tipo"] = 'required';
+                    }
+
+                    break;
             }
 
-            // Asignamos las reglas acumuladas a este campo
-            $rules[$fieldKey] = $fieldRules;
+            // Asignamos la regla solo si hay reglas generadas
+            if (!empty($fieldRules)) {
+                $rules[$fieldKey] = $fieldRules;
+            }
+        }
+
+        // 4. Reglas para SUB-FORMULARIOS (Array 'sub_answers')
+        // Iteramos solo las preguntas de tipo sub_form encontradas en el paso 2
+
+        foreach ($questions->where('type', 'sub_form') as $parentQuestion) {
+
+            $parentId = $parentQuestion->id;
+
+            // Validamos que el contenedor del padre sea un array
+            $rules["sub_answers.{$parentId}"] = 'nullable|array';
+
+            $targetSectionId = $parentQuestion->options['target_section_id'] ?? null;
+            if (!$targetSectionId) continue;
+
+            // Cargamos la sección hija
+            $childSection = \App\Models\Sections::with('questions')->find($targetSectionId);
+            if (!$childSection) continue;
+
+            foreach ($childSection->questions as $childQ) {
+
+                // LA CLAVE CORRECTA: sub_answers.PADRE.HIJO
+                $fieldKey = "sub_answers.{$parentId}.{$childQ->id}";
+                $fieldRules = [];
+                // Regla base
+                if ($question->type !== 'file' && $question->type !== 'sub_form') {
+                    $fieldRules[] = $childQ->is_required ? 'required' : 'nullable';
+                } else {
+                    $fieldRules[] = 'nullable';
+                }
+
+
+
+
+                // Tipos
+                switch ($childQ->type) {
+                    case 'text':
+                    case 'textarea':
+                        $fieldRules[] = 'string';
+                        $fieldRules[] = 'max:65535';
+                        break;
+                    case 'number':
+                        $fieldRules[] = 'integer';
+                        $fieldRules[] = 'min:0';
+                        break;
+                    case 'select':
+                        $choices = $childQ->options['choices'] ?? [];
+                        if ($choices) {
+                            $fieldRules[] = Rule::in(array_column($choices, 'value'));
+                        }
+                        break;
+                    case 'date':
+                        $fieldRules[] = 'date';
+                        break;
+                    // Importante: Laravel no maneja bien la subida de archivos en arrays anidados profundos
+                    // a veces. Verifica si tus sub-forms tienen archivos.
+                    case 'file':
+                        $fieldRules[] = $this->isMethod('put') ? 'nullable' : ($question->is_required ? 'required' : 'nullable');
+                        $fieldRules[] = 'file';
+                        $fieldRules[] = 'max:10240';
+                        $formats = $childQ->options['allowed_formats'] ?? 'pdf';
+                        $fieldRules[] = 'mimes:' . str_replace(' ', '', $formats);
+                        break;
+
+                    case 'repeater_awards':
+                        $fieldRules[] = 'array';
+
+                        // Reglas internas
+                        $rules["{$fieldKey}.*.nombre"] = 'required|string|max:255';
+
+                        // VALIDACIÓN DINÁMICA DEL SELECT
+                        // Extraemos los valores válidos de las opciones de la pregunta
+                        $validChoices = array_column($question->options['choices'] ?? [], 'value');
+
+                        if (!empty($validChoices)) {
+                            // Usamos Rule::in para mayor seguridad
+                            $rules["{$fieldKey}.*.tipo"] = ['required', \Illuminate\Validation\Rule::in($validChoices)];
+                        } else {
+                            // Fallback por si no configuraron opciones
+                            $rules["{$fieldKey}.*.tipo"] = 'required';
+                        }
+
+                        break;
+                }
+
+                $rules[$fieldKey] = $fieldRules;
+            }
         }
 
         return $rules;
     }
+
 
     /**
      * Personalizar los nombres de los atributos para los errores.
@@ -197,15 +236,55 @@ class StoreSurveyRequest extends FormRequest
     public function attributes(): array
     {
         $attributes = [];
-        $questions = Questions::all();
+
+        // 1. Optimización: Cargamos todas las preguntas o filtramos por las secciones actuales
+        // Si tienes pocas preguntas, all() está bien. Si son muchas, mejor filtrar como en rules()
+        $targetSections = $this->input('section_ids', []);
+
+        // Si no hay secciones en el input, cargamos todo (fallback)
+        if (empty($targetSections)) {
+            $questions = \App\Models\Questions::all();
+        } else {
+            $questions = \App\Models\Questions::whereIn('section_id', $targetSections)->get();
+        }
 
         foreach ($questions as $question) {
+            // A. Mapeo para preguntas normales (answers.14)
             $attributes['answers.' . $question->id] = $question->label;
+
+            // B. Mapeo para SUB-FORMULARIOS (sub_answers.31.26)
+            if ($question->type === 'sub_form') {
+
+                $targetSectionId = $question->options['target_section_id'] ?? null;
+
+                if ($targetSectionId) {
+                    // Buscamos la sección hija y sus preguntas
+                    // Usamos 'with' para optimizar la consulta
+                    $childSection = \App\Models\Sections::with('questions')->find($targetSectionId);
+
+                    if ($childSection) {
+                        foreach ($childSection->questions as $childQ) {
+                            // AQUÍ ESTÁ LA CLAVE: 
+                            // Mapeamos la ruta completa del array anidado al nombre de la pregunta hija
+                            $key = "sub_answers.{$question->id}.{$childQ->id}";
+
+                            $attributes[$key] = $childQ->label;
+                            if ($childQ->type === 'repeater_awards') {
+
+                                // Usamos el comodín '*' para que aplique a cualquier fila (0, 1, 2...)
+                                // 'nombre' y 'tipo' son los names que pusiste en tu componente Alpine
+
+                                $attributes["{$key}.*.nombre"] = 'Nombre';
+                                $attributes["{$key}.*.tipo"]   = 'Tipo';
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         return $attributes;
     }
-
     /**
      * Mensajes personalizados opcionales.
      */
@@ -220,6 +299,7 @@ class StoreSurveyRequest extends FormRequest
             'file' => 'El archivo subido en ":attribute" no es válido.',
             'max' => 'El valor de ":attribute" excede el límite permitido.',
             'unique' => 'El campo ":attribute" ya ha sido registrado por otro usuario. Si surge algún problema, favor de contactar a un administrador.',
+            'min' => 'El campo ":attribute" debe de der un número entero mayor o igual a cero.'
         ];
     }
 }
