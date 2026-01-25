@@ -285,6 +285,6 @@ class AnswerController extends Controller
                 ->with('error', 'Este formulario ya fue enviado y no puede ser modificado.');
         }
         $entry->delete();
-        return redirect()->route('proyectos.index');
+        return  redirect()->route('dashboard');
     }
 }
