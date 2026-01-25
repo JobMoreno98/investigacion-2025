@@ -163,6 +163,15 @@ class AnswerController extends Controller
     public function update(StoreSurveyRequest $request, $id)
     {
         $entry = Entry::findOrFail($id);
+
+        if ($entry->user_id !== Auth::user()->id) {
+            abort(403, 'No tienes permiso para editar este registro.');
+        }
+        if (! $entry->is_editable) {
+            return redirect()->route('dashboard')
+                ->with('error', 'Este formulario ya fue enviado y no puede ser modificado.');
+        }
+
         $validated = $request->validated();
 
         DB::transaction(function () use ($request, $validated, $entry) {
@@ -265,8 +274,17 @@ class AnswerController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Answer $answer)
+    public function destroy($id)
     {
-        //
+        $entry = Entry::findOrFail($id);
+        if ($entry->user_id !== Auth::user()->id) {
+            abort(403, 'No tienes permiso para editar este registro.');
+        }
+        if (! $entry->is_editable) {
+            return redirect()->route('dashboard')
+                ->with('error', 'Este formulario ya fue enviado y no puede ser modificado.');
+        }
+        $entry->delete();
+        return redirect()->route('proyectos.index');
     }
 }

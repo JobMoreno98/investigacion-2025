@@ -21,6 +21,7 @@ return new class extends Migration
             // aquí podrías agregar un 'form_id'. Por ahora no parece necesario.
 
             // Timestamps guarda automáticamente cuándo se creó el envío (created_at)
+            $table->softDeletes();
             $table->timestamps();
         });
     }
