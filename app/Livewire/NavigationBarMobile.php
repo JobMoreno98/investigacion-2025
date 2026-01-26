@@ -11,7 +11,7 @@ class NavigationBarMobile extends Component
     {
         return view(
             'livewire.navigation-bar-mobile',
-            ['enlaces' => Categorias::orderBy('titulo')->get()]
+            ['enlaces' => Categorias::whereJsonContains('sistema', 'sia')->orderBy('titulo')->get()]
         );
     }
 }

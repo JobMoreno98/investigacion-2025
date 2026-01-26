@@ -2,8 +2,6 @@
 
 <div {{ $attributes->merge(['class' => 'mb-2 ']) }}>
 
-    {{-- --- AQUÍ MOSTRAMOS LA AYUDA --- --}}
-
     <label for="{{ $name }}" class="block font-medium text-gray-700 mb-1">
         {{ $label }}
         @if ($required)

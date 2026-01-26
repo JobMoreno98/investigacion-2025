@@ -14,9 +14,13 @@ class CategoriasForm
             ->components([
                 TextInput::make('titulo')->required(),
                 TextInput::make('descripcion'),
-                ToggleButtons::make('investigacion')
-                    ->label('Compartir con Investigación?')
-                    ->boolean()->inline(),
+                ToggleButtons::make('sistema')
+                    ->options([
+                        'sia' => 'SIA',
+                        'investigacion' => 'Investigación',
+                    ])->default('sia')
+                    ->label('Sistema compatible')->multiple()
+                    ->inline(),
             ]);
     }
 }

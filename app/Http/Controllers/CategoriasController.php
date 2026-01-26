@@ -35,7 +35,7 @@ class CategoriasController extends Controller
      */
     public function show(Categorias $categoria)
     {
-        if (!isset($categoria->titulo)) {
+        if (!isset($categoria->titulo) || $categoria->investigacion == true) {
             abort(403, 'El registro no existe.');
         }
 
@@ -49,7 +49,7 @@ class CategoriasController extends Controller
                 return redirect()->route('answers.edit', $datos->entry_id);
             } else {
                 $seccion = $categoria->secciones->first();
-                
+
                 if ($seccion) {
                     return redirect()->route('answers.show', $seccion->id);
                 }

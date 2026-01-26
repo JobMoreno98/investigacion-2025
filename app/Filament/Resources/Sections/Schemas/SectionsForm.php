@@ -3,15 +3,20 @@
 namespace App\Filament\Resources\Sections\Schemas;
 
 use App\Models\CatalogItem;
+use App\Models\Questions;
+use App\Models\Sections;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Components\ToggleButtons;
+use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Str;
+use Filament\Forms\Components\Component;
+use Filament\Schemas\Components\Component as ComponentsComponent;
 
 class SectionsForm
 {
@@ -59,15 +64,21 @@ class SectionsForm
                                 'catalog' => 'Lista de Catalogos',
                                 'sub_form' => 'Insertar Otra Sección (Sub-Formulario)',
                                 'repeater_awards' => 'Select: Reconocimientos (Nombre/Tipo)',
+                                'reference' => 'Referencia a otra Respuesta (Dinámico)',
+                                'user' => 'Referencia a usuarios (Dinámico)'
                             ])
+                            ->live()
+                            // Limpiamos las opciones al cambiar de tipo para evitar basura en el JSON
+                            ->afterStateUpdated(fn($set) => $set('options', []))
                             ->reactive() // Para mostrar/ocultar opciones
                             ->required(),
+
                         // --- CONFIGURACIÓN ESPECÍFICA PARA EL REPEATER ---
-                            TextInput::make('options.button_label') // <--- NUEVO
-                                ->label('Texto del Botón "Agregar"')
-                                ->placeholder('Ej: Agregar otro reconocimiento')
-                                ->default('Agregar elemento')
-                                ->visible(fn($get) => $get('type') === 'repeater_awards'),
+                        TextInput::make('options.button_label') // <--- NUEVO
+                            ->label('Texto del Botón "Agregar"')
+                            ->placeholder('Ej: Agregar otro reconocimiento')
+                            ->default('Agregar elemento')
+                            ->visible(fn($get) => $get('type') === 'repeater_awards'),
 
                         // Agrega esto debajo del selector de tipo
                         TextInput::make('options.allowed_formats')
@@ -94,7 +105,7 @@ class SectionsForm
                             ->reorderableWithButtons() // O ->reorderable() simple
                             ->collapsible()
                             ->itemLabel(fn(array $state): ?string => $state['label'] ?? null) // Pone el título en la barrita colapsada
-                            ->visible(fn ($get) => in_array($get('type'), ['select', 'repeater_awards'])),
+                            ->visible(fn($get) => in_array($get('type'), ['select', 'repeater_awards'])),
 
                         Select::make('options.catalog_name')
                             ->label('Fuente de Datos')
@@ -113,6 +124,40 @@ class SectionsForm
                                 // 3. Fusionamos ambos arrays para que el admin elija cualquiera
                                 return $universal;
                             }),
+                        // =========================================================
+                        // CONFIGURACIÓN PARA TIPO: REFERENCIA
+                        // =========================================================
+                        Section::make('Configuración de la Fuente de Datos')
+                            ->description('Selecciona de dónde saldrán las opciones para esta pregunta.')
+                            ->schema([
+                                Grid::make(1)
+                                    ->schema([
+                                        Select::make('options.source_section_id')
+                                            ->label('1. Sección de Origen')
+                                            ->options(Sections::pluck('title', 'id'))
+                                            ->live()
+                                            ->afterStateUpdated(fn($set) => $set('options.source_question_id', null)),
+
+                                        // 2. SELECT HIJO (Pregunta)
+                                        Select::make('options.source_question_id')
+                                            ->label('2. Pregunta de Origen')
+                                            ->reactive()
+                                            ->options(
+                                                fn($get) =>
+                                                filled($get('options.source_section_id'))
+                                                    ? Questions::where('section_id', $get('options.source_section_id'))
+                                                    ->pluck('label', 'id')
+                                                    : []
+                                            )
+                                            ->searchable()
+                                            ->required(fn($get) => filled($get('options.source_section_id')))
+                                            ->native(false)
+                                            ->disabled(fn($get) => blank($get('options.source_section_id')))
+                                            ->placeholder('Selecciona una pregunta de la lista...')
+
+                                    ])->visible(fn($get) => $get('type') === 'reference'),
+                            ]),
+
                         Select::make('options.target_section_id')
                             ->label('Sección a Incrustar')
                             ->helperText('Selecciona la sección genérica que quieres que aparezca aquí.')
