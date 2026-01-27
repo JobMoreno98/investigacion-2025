@@ -8,17 +8,48 @@ return new class extends Migration
 {
     public function up()
     {
+
         DB::statement("
             CREATE OR REPLACE VIEW  answers_view AS
-select `a`.`id` AS `answer_id`,`a`.`entry_id` AS `entry_id`,
-`e`.`is_editable` AS `is_editable`,`a`.`value` AS `respuesta`,
-`q`.`id` AS `question_id`,`q`.`label` AS `pregunta`,`s`.`id` AS `section_id`,
-`s`.`title` AS `section_title`,`u`.`id` AS `user_id`,`u`.`name` AS `user_name`,
-`u`.`email` AS `user_email` , e.created_at as fecha_creado
-from ((((`sia`.`answers` `a` join `sia`.`questions` `q` on((`a`.`question_id` = `q`.`id`))) 
-join `sia`.`sections` `s` on((`q`.`section_id` = `s`.`id`))) join `sia`.`entries` `e` on((`a`.`entry_id` = `e`.`id`) AND(`e`.`deleted_at` IS NULL)
- )) join `sia`.`users` `u` on((`e`.`user_id` = `u`.`id`)))
-        ");
+SELECT
+    `a`.`id` AS `answer_id`,
+    `a`.`entry_id` AS `entry_id`,
+    `e`.`is_editable` AS `is_editable`,
+    JSON_UNQUOTE(`a`.`value`) AS `respuesta`,
+    `q`.`id` AS `question_id`,
+    `q`.`label` AS `pregunta`,
+    `s`.`id` AS `section_id`,
+    `s`.`title` AS `section_title`,
+    `u`.`id` AS `user_id`,
+    `u`.`name` AS `user_name`,
+    `u`.`email` AS `user_email`,
+    `e`.`created_at` AS `fecha_creado`
+FROM
+    (
+        (
+            (
+                (
+                    `sia`.`answers` `a`
+                JOIN `sia`.`questions` `q`
+                ON
+                    ((`a`.`question_id` = `q`.`id`))
+                )
+            JOIN `sia`.`sections` `s`
+            ON
+                ((`q`.`section_id` = `s`.`id`))
+            )
+        JOIN `sia`.`entries` `e`
+        ON
+            (
+                (
+                    (`a`.`entry_id` = `e`.`id`) AND(`e`.`deleted_at` IS NULL)
+                )
+            )
+        )
+    JOIN `sia`.`users` `u`
+    ON
+        ((`e`.`user_id` = `u`.`id`))
+    )");
     }
 
     public function down()

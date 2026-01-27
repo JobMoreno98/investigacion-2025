@@ -65,7 +65,8 @@ class SectionsForm
                                 'sub_form' => 'Insertar Otra Sección (Sub-Formulario)',
                                 'repeater_awards' => 'Select: Reconocimientos (Nombre/Tipo)',
                                 'reference' => 'Referencia a otra Respuesta (Dinámico)',
-                                'user' => 'Referencia a usuarios (Dinámico)'
+                                'user' => 'Referencia a usuarios (Dinámico)',
+                                'scored_text' => 'Puntuación con Justificación',
                             ])
                             ->live()
                             // Limpiamos las opciones al cambiar de tipo para evitar basura en el JSON
@@ -86,6 +87,22 @@ class SectionsForm
                             ->placeholder('ej: pdf, jpg, png, docx')
                             ->helperText('Escribe las extensiones separadas por coma.')
                             ->visible(fn($get) => $get('type') === 'file'),
+
+                        Grid::make(2)
+                            ->schema([
+                                TextInput::make('options.min_score')
+                                    ->label('Puntuación Mínima')
+                                    ->numeric()
+                                    ->default(0)
+                                    ->required(),
+
+                                TextInput::make('options.max_score')
+                                    ->label('Puntuación Máxima')
+                                    ->numeric()
+                                    ->default(10)
+                                    ->required(),
+                            ])
+                            ->visible(fn($get) => $get('type') === 'scored_text'),
 
                         // Este campo solo aparece si el tipo es 'select'
                         Repeater::make('options.choices')
