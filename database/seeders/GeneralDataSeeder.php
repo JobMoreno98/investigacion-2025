@@ -18,6 +18,7 @@ class GeneralDataSeeder extends Seeder
             ['titulo' => 'Datos Generales'],
             [
                 'titulo' => 'Datos Generales',
+                'sistema' => ['sia', 'investigacion']
             ]
         );
 

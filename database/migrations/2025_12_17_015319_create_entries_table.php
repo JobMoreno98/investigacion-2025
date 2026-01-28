@@ -16,11 +16,8 @@ return new class extends Migration
 
             // Quién hizo el envío. Nullable para encuestas anónimas.
             $table->foreignId('user_id')->nullable()->constrained()->nullOnDelete();
+            $table->foreignId('ciclo_id')->constrained();
 
-            // Opcional: Si en el futuro tienes múltiples formularios diferentes,
-            // aquí podrías agregar un 'form_id'. Por ahora no parece necesario.
-
-            // Timestamps guarda automáticamente cuándo se creó el envío (created_at)
             $table->softDeletes();
             $table->timestamps();
         });

@@ -61,6 +61,7 @@ class DataSeeder extends Seeder
                 ['titulo' => $key],
                 [
                     'titulo' => $key,
+                    'sistema' => ['sia', 'investigacion']
                 ]
             );
             if ($key == 'Datos Laborales') {

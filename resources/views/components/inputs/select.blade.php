@@ -29,7 +29,8 @@
 
             @if($enableSearch) placeholder="Buscar..." @endif
             
-            class="form-select text-stone-900 border-gray-300 rounded-xs shadow-md focus:border-blue-500 focus:ring focus:ring-blue-200 w-full p-2"
+            class="form-select border border-stone-300 p-2 text-stone-900 border-gray-300 rounded-md shadow-sm focus:border-blue-500 
+        focus:ring focus:ring-blue-200 w-full"
         >
             <option value="">Seleccione...</option>
 

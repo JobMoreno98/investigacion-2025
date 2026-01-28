@@ -23,7 +23,8 @@ SELECT
     `u`.`id` AS `user_id`,
     `u`.`name` AS `user_name`,
     `u`.`email` AS `user_email`,
-    `e`.`created_at` AS `fecha_creado`
+    `e`.`created_at` AS `fecha_creado`,
+    `e`.`ciclo_id` AS `ciclo_registro`
 FROM
     (
         (
