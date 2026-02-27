@@ -8,6 +8,21 @@
 </head>
 
 <body class="min-h-screen bg-white">
+    <div id="page-loader"
+        style="position:fixed;inset:0;z-index:9999;background:white;display:none;align-items:center;justify-content:center;">
+        <div
+            style="width:50px;height:50px;border:6px solid #c7d2fe;border-top:6px solid #4f46e5;border-radius:50%;animation:spin 1s linear infinite;">
+        </div>
+    </div>
+
+    <style>
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+
     <flux:sidebar sticky stashable class="border-e border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900">
         <flux:sidebar.toggle class="lg:hidden" icon="x-mark" />
 
@@ -114,8 +129,54 @@
 
     {{ $slot }}
 
+    <script src="{{ asset('js/validateForm.js') }}"></script>
+    <script>
+        function initPageLoader() {
+
+            const loader = document.getElementById('page-loader');
+
+            if (!loader) return;
+
+            function show() {
+                loader.style.display = 'flex';
+            }
+
+            function hide() {
+                loader.style.display = 'none';
+            }
+
+            window.testLoader = show;
+            window.hideLoader = hide;
+
+            // 🔹 Navegación SPA (wire:navigate)
+            document.addEventListener('livewire:navigate', show);
+            document.addEventListener('livewire:navigated', hide);
+
+            // 🔹 Requests Livewire normales
+            document.addEventListener('livewire:init', () => {
+                Livewire.hook('request', ({
+                    respond
+                }) => {
+                    show();
+                    respond(() => hide());
+                });
+            });
+
+            // 🔹 Recarga real
+            window.addEventListener('beforeunload', show);
+        }
+
+        // 🔥 IMPORTANTE
+        document.addEventListener('livewire:navigated', initPageLoader);
+        document.addEventListener('DOMContentLoaded', initPageLoader);
+    </script>
+    @livewireScripts
     @fluxScripts
+
     <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
+
+    @stack('js')
+
 </body>
 
 </html>
