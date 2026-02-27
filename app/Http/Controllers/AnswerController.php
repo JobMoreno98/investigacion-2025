@@ -47,6 +47,7 @@ class AnswerController extends Controller
             if (!isset($ciclo->id)) {
                 abort(403, "No hay ciclo para regsitro aun.");
             }
+            
             $entry = Entry::create([
                 'user_id' => Auth::id(),
                 'ciclo_id' => $ciclo->id

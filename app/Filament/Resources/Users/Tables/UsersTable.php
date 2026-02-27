@@ -14,7 +14,8 @@ class UsersTable
     {
         return $table
             ->columns([
-                TextColumn::make('name')->label('Nombre')
+                TextColumn::make('name')->label('Nombre'),
+                TextColumn::make('email')->label('Correo')
             ])
             ->filters([
                 //

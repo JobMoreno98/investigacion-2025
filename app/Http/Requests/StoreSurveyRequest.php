@@ -40,11 +40,29 @@ class StoreSurveyRequest extends FormRequest
 
         // 3. Reglas para preguntas NORMALES (Array 'answers')
         foreach ($questions as $question) {
+            // --- 1. LÓGICA DE DEPENDENCIA ---
+            // Usamos filter_var por si Filament guarda el toggle como "0" o "false"
+            $isDependent = filter_var($question->options['is_dependent'] ?? false, FILTER_VALIDATE_BOOLEAN);
+
+            if ($isDependent) {
+                $parentId = $question->options['depends_on_question_id'] ?? null;
+                $expectedValue = $question->options['depends_on_value'] ?? null;
+
+                // Buscamos qué respondió el usuario en el padre
+                $actualValue = $answers[$parentId] ?? null;
+
+                // Si la respuesta no es la esperada, la pregunta está oculta,
+                // así que ignoramos todas sus reglas de validación.
+                if ((string) $actualValue !== (string) $expectedValue) {
+                    continue;
+                }
+            }
+            // ---------------------------------
+
             $fieldKey = 'answers.' . $question->id;
             $fieldRules = [];
 
             // A. Regla base (Requerido/Nullable)
-            // Ignoramos 'sub_form' aquí porque su valor real viaja en 'sub_answers'
             if ($question->type !== 'file' && $question->type !== 'sub_form') {
                 $fieldRules[] = $question->is_required ? 'required' : 'nullable';
             } else {
@@ -249,6 +267,8 @@ class StoreSurveyRequest extends FormRequest
         }
 
         foreach ($questions as $question) {
+
+
             // A. Mapeo para preguntas normales (answers.14)
             $attributes['answers.' . $question->id] = $question->label;
 

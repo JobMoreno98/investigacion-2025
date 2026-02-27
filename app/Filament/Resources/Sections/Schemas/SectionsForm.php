@@ -215,6 +215,39 @@ class SectionsForm
                             ->helperText('Usa esto para conectar preguntas entre sí.'),
                     ]),
 
+                    Section::make('Lógica Condicional (Dependencias)')
+                        ->description('Oculta esta pregunta hasta que el usuario responda algo específico en otra.')
+                        ->collapsed()
+                        ->schema([
+                            Toggle::make('options.is_dependent')
+                                ->label('¿Depende de otra pregunta?')
+                                ->live() // Hace que el formulario reaccione al activarlo
+                                ->inline(),
+
+                            Grid::make(2)->schema([
+                                Select::make('options.depends_on_question_id')
+                                    ->label('¿De qué pregunta depende?')
+                                    ->helperText('Solo puedes seleccionar preguntas que ya estén guardadas en esta sección.')
+                                    ->options(function ($livewire) {
+                                        // Buscamos el ID de la sección actual que estamos editando
+                                        $sectionId = $livewire->record?->id;
+
+                                        if (!$sectionId) return []; // Si estamos creando la sección por primera vez, devolvemos vacío
+
+                                        // Retornamos las preguntas de esta misma sección
+                                        return \App\Models\Questions::where('section_id', $sectionId)
+                                            ->pluck('label', 'id');
+                                    })
+                                    ->searchable()
+                                    ->required(fn($get) => $get('options.is_dependent')),
+
+                                TextInput::make('options.depends_on_value')
+                                    ->label('Mostrar cuando la respuesta sea igual a:')
+                                    ->placeholder('Ej: Si, Otra, 1')
+                                    ->required(fn($get) => $get('options.is_dependent')),
+                            ])->visible(fn($get) => $get('options.is_dependent')),
+                        ]),
+
 
                 ])
                 ->orderable('sort_order')
