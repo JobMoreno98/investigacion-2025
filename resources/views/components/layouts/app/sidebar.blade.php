@@ -148,11 +148,8 @@
             window.testLoader = show;
             window.hideLoader = hide;
 
-            // 🔹 Navegación SPA (wire:navigate)
             document.addEventListener('livewire:navigate', show);
             document.addEventListener('livewire:navigated', hide);
-
-            // 🔹 Requests Livewire normales
             document.addEventListener('livewire:init', () => {
                 Livewire.hook('request', ({
                     respond
@@ -161,12 +158,8 @@
                     respond(() => hide());
                 });
             });
-
-            // 🔹 Recarga real
             window.addEventListener('beforeunload', show);
         }
-
-        // 🔥 IMPORTANTE
         document.addEventListener('livewire:navigated', initPageLoader);
         document.addEventListener('DOMContentLoaded', initPageLoader);
     </script>

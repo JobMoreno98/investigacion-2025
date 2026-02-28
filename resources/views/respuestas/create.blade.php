@@ -43,7 +43,7 @@
                     <div class="space-y-5 mt-4  grid grid-cols-1 md:grid-cols-2 gap-4 items-center content-center ">
                         @foreach ($seccion->questions as $question)
                             @php
-                                $item = QuestionHelper::prepare($question, $existingAnswers);
+                                $item = QuestionHelper::prepare($question);
                                 $isSubForm = $item['type'] === 'sub_form';
                             @endphp
 

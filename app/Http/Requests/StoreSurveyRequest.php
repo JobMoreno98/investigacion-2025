@@ -53,6 +53,7 @@ class StoreSurveyRequest extends FormRequest
 
                 // Si la respuesta no es la esperada, la pregunta está oculta,
                 // así que ignoramos todas sus reglas de validación.
+                dd($actualValue, $expectedValue);
                 if ((string) $actualValue !== (string) $expectedValue) {
                     continue;
                 }
@@ -177,13 +178,37 @@ class StoreSurveyRequest extends FormRequest
                 // LA CLAVE CORRECTA: sub_answers.PADRE.HIJO
                 $fieldKey = "sub_answers.{$parentId}.{$childQ->id}";
                 $fieldRules = [];
+
+
+                $isChildDependent = filter_var($childQ->options['is_dependent'] ?? false, FILTER_VALIDATE_BOOLEAN);
+
+                if ($isChildDependent) {
+                    $childParentId = $childQ->options['depends_on_question_id'] ?? null;
+
+                    $childExpectedValue = trim(strtolower($childQ->options['depends_on_value'] ?? ''));
+                    $rawChildActualValue = $this->input("sub_answers.{$parentId}.{$childParentId}");
+
+                    $childMatch = false;
+
+                    if (is_array($rawChildActualValue)) {
+                        $actualChildArray = array_map(fn($v) => trim(strtolower((string)$v)), $rawChildActualValue);
+                        $childMatch = in_array($childExpectedValue, $actualChildArray);
+                    } else {
+                        $childActualValue = trim(strtolower((string) $rawChildActualValue));
+                        $childMatch = ($childActualValue === $childExpectedValue);
+                    }
+
+                    if (!$childMatch) {
+                        continue;
+                    }
+                }
+
                 // Regla base
                 if ($question->type !== 'file' && $question->type !== 'sub_form') {
                     $fieldRules[] = $childQ->is_required ? 'required' : 'nullable';
                 } else {
                     $fieldRules[] = 'nullable';
                 }
-
 
 
 
