@@ -102,7 +102,7 @@ class SectionsForm
                                     ->default(10)
                                     ->required(),
                             ])
-                            ->visible(fn($get) => $get('type') === 'scored_text'),
+                            ->visible(fn($get) => in_array($get('type'), ['scored_text', 'number'])),
 
                         // Este campo solo aparece si el tipo es 'select'
                         Repeater::make('options.choices')
