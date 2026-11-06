@@ -25,32 +25,35 @@
                 class="bg-white shadow-lg rounded-lg p-6 border-t-2 border-blue-500">
                 @csrf
                 @method('PUT')
+                <h3 class="font-semibold text-gray-800">{{ $seccion->title }}</h3>
+                @if ($seccion->description)
+                    <p class="text-gray-500 text-sm mb-4">{{ $seccion->description }}</p>
+                @endif
                 <div class="space-y-5 mt-4  grid grid-cols-1 md:grid-cols-2 gap-4 items-center content-center">
 
                     <input type="hidden" name="section_ids[]" value="{{ $seccion->id }}">
 
                     @foreach ($seccion->questions as $question)
-                        @php
-                            $item = QuestionHelper::prepare($question, $existingAnswers);
-                            $isSubForm = $item['type'] === 'sub_form';
-                        @endphp
+                                    @php
+                                        $item = QuestionHelper::prepare($question, $existingAnswers);
+                                        $isSubForm = $item['type'] === 'sub_form';
+                                    @endphp
 
-                        <div @if ($item['isDependent'] && $item['parentId']) x-data="dependencyComponent({{ $item['parentId'] }}, @js($item['expectedValue']))"
-            x-init="init()"
-            x-show="show"
-            x-cloak @endif
-                            class="
-            w-full mb-4
-            {{ $isSubForm ? 'col-span-1 md:col-span-2' : '' }}
-        ">
+                                    <div @if ($item['isDependent'] && $item['parentId'])
+                                        x-data="dependencyComponent({{ $item['parentId'] }}, @js($item['expectedValue']))"
+                                    x-init="init()" x-show="show" x-cloak @endif class="
+                            w-full mb-4
+                            {{ $isSubForm ? 'col-span-1 md:col-span-2' : '' }}
+                        ">
 
-                            @if ($isSubForm)
-                                <x-sub-form :item="$item" />
-                            @else
-                                <x-dynamic-component :component="$item['component']" :question="$item['model']" :value="$item['value']" />
-                            @endif
+                                        @if ($isSubForm)
+                                            <x-sub-form :item="$item" />
+                                        @else
+                                            <x-dynamic-component :component="$item['component']" :question="$item['model']"
+                                                :value="$item['value']" />
+                                        @endif
 
-                        </div>
+                                    </div>
                     @endforeach
                 </div>
                 <div class="flex justify-center mt-4 col-span-2">

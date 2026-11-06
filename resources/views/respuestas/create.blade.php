@@ -7,6 +7,7 @@
     <div class="container m-auto">
         <div class="max-w-7xl mx-auto py-10 px-4">
 
+
             {{-- Muestra mensaje de éxito si existe --}}
             @if (session('success'))
                 <x-alert type="success">
@@ -14,17 +15,17 @@
                 </x-alert>
             @endif
 
-
             @if ($errors->any())
-                <div class="alert alert-danger">
-                    <ul>
+                <div class="mb-6 bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded shadow-sm" role="alert">
+                    <p class="font-bold mb-2">No se pudo guardar, corrige lo siguiente:</p>
+                    <ul class="list-disc px-5 text-sm">
                         @foreach ($errors->all() as $error)
                             <li>{{ $error }}</li>
                         @endforeach
                     </ul>
                 </div>
             @endif
-
+            
             {{-- IMPORTANTE: enctype es necesario para subir archivos --}}
             <form action="{{ route('answers.store') }}" method="POST" enctype="multipart/form-data" class="space-y-8">
                 @csrf
@@ -47,16 +48,16 @@
                                 $isSubForm = $item['type'] === 'sub_form';
                             @endphp
 
-                            <div @if ($item['isDependent'] && $item['parentId']) x-data="dependencyComponent({{ $item['parentId'] }}, @js($item['expectedValue']))"
-            x-init="init()"
-            x-show="show"
-            x-cloak @endif
+                            <div @if ($item['isDependent'] && $item['parentId'])
+                                x-data="dependencyComponent({{ $item['parentId'] }}, @js($item['expectedValue']))"
+                            x-init="init()" x-show="show" x-cloak @endif
                                 class=" w-full mb-4 {{ $isSubForm ? 'col-span-1 md:col-span-2' : '' }} ">
 
                                 @if ($isSubForm)
                                     <x-sub-form :item="$item" />
                                 @else
-                                    <x-dynamic-component :component="$item['component']" :question="$item['model']" :value="$item['value']" />
+                                    <x-dynamic-component :component="$item['component']" :question="$item['model']"
+                                        :value="$item['value']" />
                                 @endif
 
                             </div>

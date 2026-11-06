@@ -3,115 +3,93 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreSurveyRequest;
-use App\Models\Answer;
+use App\Models\AnswerFullView;
 use App\Models\Ciclos;
 use App\Models\Entry;
 use App\Models\Sections;
+use App\Services\SurveySubmissionService;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use RealRashid\SweetAlert\Facades\Alert;
 
 class AnswerController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
+    protected SurveySubmissionService $surveyService;
+
+    // Inyección de dependencias del nuevo servicio
+    public function __construct(SurveySubmissionService $surveyService)
+    {
+        $this->surveyService = $surveyService;
+    }
+
     public function index()
     {
-        //
+        $proyectos = AnswerFullView::where('user_id', Auth::id())
+            ->where('section_title', 'Proyectos de Investigación')
+            ->groupBy('entry_id')
+            ->orderBy('fecha_creado')
+            ->get();
+
+        return view('respuestas.index', compact('proyectos'));
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
     public function create($id)
     {
-        $seccion = Sections::with('questions')->where('id', $id)->first();
-
+        $seccion = Sections::with('questions')->where('id', $id)->firstOrFail();
         return view('respuestas.create', compact('seccion'));
     }
-
+    /**
+     * Store a newly created resource in storage.
+     */
     /**
      * Store a newly created resource in storage.
      */
     public function store(StoreSurveyRequest $request)
     {
+        // 1. Identificar si es un proyecto de investigación
+        $idProyectos = Sections::idProyectos();
+        $esProyecto = in_array($idProyectos, $request->section_ids ?? []);
+        $fecha = date('Y-m-d');
+
+        // 2. Buscar el ciclo activo correspondiente
+        if ($esProyecto) {
+            $ciclo = Ciclos::whereJsonContains('sistemas', 'investigacion')
+                ->where('activo', true)
+                ->whereDate('inicio', '<=', $fecha)
+                ->whereDate('fin', '>=', $fecha)
+                ->latest()
+                ->first();
+        } else {
+            // Si es Datos Generales u otro, solo trae el ciclo activo general más reciente
+            $ciclo = Ciclos::where('activo', true)->latest()->first();
+        }
+
+        // 3. Validar si hay ciclo activo o si el usuario es administrador
+        if (!$ciclo && !Auth::user()->hasRole('admin')) {
+            return redirect()->route('dashboard')
+                ->with('error', 'Alto. No hay un ciclo activo en este momento o estás fuera de tiempo.');
+        }
+
+        // 4. Obtener los datos ya validados por el FormRequest
         $validated = $request->validated();
 
-        // Usamos DB::transaction para seguridad (evita datos huérfanos si algo falla)
-        $mainEntry = DB::transaction(function () use ($request, $validated) {
-
-            // 1. CREAR EL ENTRY PRINCIPAL (PADRE)
-            $ciclo = Ciclos::whereJsonContains('sistemas', 'sia')->where('activo', true)->latest()->first();
-
-            
-            if (!isset($ciclo->id)) {
-                abort(403, "No hay ciclo para regsitro aun.");
-            }
-            
+        // 5. Transacción de Base de Datos limpia usando el servicio
+        $mainEntry = DB::transaction(function () use ($request, $validated, $ciclo) {
+            // Creamos el Entry principal con su sección y ciclo
             $entry = Entry::create([
                 'user_id' => Auth::id(),
-                'ciclo_id' => $ciclo->id
-                // 'is_editable' => true, // Si usas este campo
+                'ciclo_id' => $ciclo->id,
+                'section_id' => $request->section_ids[0] // Evita el error 1364 Field 'section_id' doesn't have a default value
             ]);
 
-            // 2. GUARDAR RESPUESTAS NORMALES (Nivel Padre)
-            if (!empty($validated['answers'])) {
-                foreach ($validated['answers'] as $questionId => $value) {
+            // Delegamos el guardado de respuestas y archivos al servicio
+            $this->surveyService->saveAnswers($entry, $validated, $request);
 
-                    // A. Lógica de Archivos (Padre)
-                    if ($request->hasFile("answers.{$questionId}")) {
-                        $value = $request->file("answers.{$questionId}")->store('uploads', 'public');
-                    }
-
-                    // B. Guardar Respuesta
-                    $entry->answers()->create([
-                        'question_id' => $questionId,
-                        'value' => $value,
-                    ]);
-                }
-            }
-
-            // 3. GUARDAR SUB-FORMULARIOS (Nivel Hijo)
-            // Estructura: sub_answers[ID_PREGUNTA_PADRE][ID_PREGUNTA_HIJA] = VALOR
-            if (!empty($validated['sub_answers'])) {
-                foreach ($validated['sub_answers'] as $parentQuestionId => $childData) {
-
-                    // A. Crear el Entry "Hijo" (El contenedor de la sub-sección)
-                    // Se crea igual que el padre, solo cambia su contenido
-                    $childEntry = Entry::create([
-                        'user_id' => Auth::id(),
-                        'ciclo_id' => $ciclo->id
-                    ]);
-
-                    // B. VINCULAR PADRE CON HIJO
-                    // En la pregunta 31 del Padre, guardamos el ID del Entry Hijo (ej: "502")
-                    $entry->answers()->create([
-                        'question_id' => $parentQuestionId, // Ej: 31
-                        'value' => $childEntry->id,         // Aquí está la magia
-                    ]);
-
-                    // C. Guardar las Respuestas del Hijo
-                    foreach ($childData as $childQuestionId => $childValue) {
-
-                        // Lógica de Archivos (Hijo)
-                        // Nota el nombre del input: sub_answers.31.26
-                        if ($request->hasFile("sub_answers.{$parentQuestionId}.{$childQuestionId}")) {
-                            $childValue = $request->file("sub_answers.{$parentQuestionId}.{$childQuestionId}")
-                                ->store('uploads', 'public');
-                        }
-
-                        // Guardamos vinculado al ENTRY HIJO, no al padre
-                        $childEntry->answers()->create([
-                            'question_id' => $childQuestionId,
-                            'value' => is_array($childValue) ? json_encode($childValue) : $childValue,
-                        ]);
-                    }
-                }
-            }
-
-            return $entry; // Retornamos el entry para usarlo en el redirect
+            return $entry;
         });
 
+        // 6. Redirigir a la vista de edición correcta (answers.edit)
         return redirect()->route('answers.edit', $mainEntry->id)
             ->with('success', 'Registrado correctamente.');
     }
@@ -132,41 +110,31 @@ class AnswerController extends Controller
      */
     public function edit($id)
     {
-
         $entry = Entry::with(['answers.question', 'answers'])->findOrFail($id);
 
-        // 2. Seguridad: Verificar que el entry pertenece al usuario logueado
-        if ($entry->user_id !== Auth::user()->id) {
+        if ($entry->user_id !== Auth::id() && !Auth::user()->hasRole('admin')) {
             abort(403, 'No tienes permiso para editar este registro.');
         }
-        if (! $entry->is_editable) {
-            return redirect()->route('dashboard')
-                ->with('error', 'Este formulario ya fue enviado y no puede ser modificado.');
-        }
 
-        // 3. Identificar la Sección
-        // Asumimos que todas las respuestas de un entry son de la misma sección.
-        // Tomamos la sección de la primera respuesta encontrada.
+        if (!$entry->is_editable) {
+            return redirect()->route('dashboard')->with('error', 'Este formulario ya fue enviado.');
+        }
 
         $firstAnswer = $entry->answers->first();
         $sectionId = $firstAnswer ? $firstAnswer->question->section_id : null;
 
-        if (! $sectionId) {
+        if (!$sectionId) {
             return back()->with('error', 'Registro corrupto o vacío');
         }
 
-        // 4. Cargar la estructura del formulario (Preguntas)
         $seccion = Sections::where('id', $sectionId)
             ->with(['questions' => fn($q) => $q->orderBy('sort_order')])
-            ->first();
+            ->firstOrFail();
 
-        // 5. TRUCO PRO: Mapear respuestas para acceso rápido en la vista
-        // Resultado: [ ID_PREGUNTA => 'Valor de la respuesta' ]
         $existingAnswers = $entry->answers->pluck('value', 'question_id')->toArray();
 
         return view('respuestas.edit', compact('entry', 'seccion', 'existingAnswers'));
     }
-
     /**
      * Update the specified resource in storage.
      */
@@ -174,127 +142,65 @@ class AnswerController extends Controller
     {
         $entry = Entry::findOrFail($id);
 
-        if ($entry->user_id !== Auth::user()->id) {
+        if ($entry->user_id !== Auth::id() && !Auth::user()->hasRole('admin')) {
             abort(403, 'No tienes permiso para editar este registro.');
         }
-        if (! $entry->is_editable) {
-            return redirect()->route('dashboard')
-                ->with('error', 'Este formulario ya fue enviado y no puede ser modificado.');
+
+        if (!$entry->is_editable) {
+            return redirect()->route('dashboard')->with('error', 'Este formulario ya fue enviado.');
         }
 
         $validated = $request->validated();
 
+        // Actualización encapsulada en el servicio
         DB::transaction(function () use ($request, $validated, $entry) {
-
-            // ... (PARTE 1: RESPUESTAS PADRE - SE MANTIENE IGUAL) ...
-            if (!empty($validated['answers'])) {
-                foreach ($validated['answers'] as $questionId => $value) {
-                    // ... Lógica de archivos y guardado normal ...
-                    if ($request->hasFile("answers.{$questionId}")) {
-                        $value = $request->file("answers.{$questionId}")->store('uploads', 'public');
-                    } elseif ($value === null) {
-                        $q = \App\Models\Questions::find($questionId);
-                        if ($q && $q->type === 'file' && $entry->answers()->where('question_id', $questionId)->exists()) {
-                            continue;
-                        }
-                    }
-
-                    Answer::updateOrCreate(
-                        ['entry_id' => $entry->id, 'question_id' => $questionId],
-                        ['value' => $value]
-                    );
-                }
-            }
-
-            // =========================================================
-            // PARTE 2: SUB-FORMULARIOS (CORREGIDO PARA TU TABLA ENTRIES)
-            // =========================================================
-            if (!empty($validated['sub_answers'])) {
-
-                foreach ($validated['sub_answers'] as $parentQId => $incomingChildData) {
-
-                    // 1. Obtenemos la Pregunta Padre para saber la SECCIÓN DESTINO
-                    // Como 'entries' no guarda la sección, necesitamos sacarla de aquí.
-                    $parentQuestion = \App\Models\Questions::find($parentQId);
-                    $targetSectionId = $parentQuestion->options['target_section_id'] ?? null;
-
-                    if (!$targetSectionId) continue; // Si no está configurada, saltamos
-
-                    // 2. Buscamos o Creamos el Entry Hijo
-                    $linkAnswer = Answer::where('entry_id', $entry->id)
-                        ->where('question_id', $parentQId)
-                        ->first();
-
-                    $childEntry = $linkAnswer ? Entry::find($linkAnswer->value) : null;
-
-                    if (!$childEntry) {
-                        // CREACIÓN: Solo ID y User_ID
-                        $childEntry = Entry::create([
-                            'user_id' => Auth::id(),
-                            // 'section_id' => ... ELIMINADO (No existe en tu tabla)
-                            // 'status' => ... ELIMINADO
-                        ]);
-
-                        // Vinculamos al padre
-                        Answer::updateOrCreate(
-                            ['entry_id' => $entry->id, 'question_id' => $parentQId],
-                            ['value' => $childEntry->id]
-                        );
-                    }
-
-                    // 3. GUARDADO DE RESPUESTAS (Iterando sobre el Schema, no el Input)
-                    if ($childEntry) {
-
-                        // CORRECCIÓN: Usamos $targetSectionId que obtuvimos arriba
-                        // en lugar de $childEntry->section_id
-                        $childQuestions = \App\Models\Questions::where('section_id', $targetSectionId)->get();
-
-                        foreach ($childQuestions as $question) {
-                            $childQId = $question->id;
-                            $value = $incomingChildData[$childQId] ?? null;
-
-                            // A. Repeater vacío -> Array vacío
-                            if ($value === null && in_array($question->type, ['repeater', 'repeater_awards'])) {
-                                $value = [];
-                            }
-
-                            // B. Archivos
-                            if ($request->hasFile("sub_answers.{$parentQId}.{$childQId}")) {
-                                $value = $request->file("sub_answers.{$parentQId}.{$childQId}")->store('uploads', 'public');
-                            } elseif ($question->type === 'file' && $value === null) {
-                                if ($childEntry->answers()->where('question_id', $childQId)->exists()) {
-                                    continue;
-                                }
-                            }
-
-                            // C. Guardar
-                            Answer::updateOrCreate(
-                                ['entry_id' => $childEntry->id, 'question_id' => $childQId],
-                                ['value' => is_array($value) ? json_encode($value) : $value]
-                            );
-                        }
-                    }
-                }
-            }
+            $this->surveyService->saveAnswers($entry, $validated, $request);
         });
 
-        return redirect()->route('answers.edit', $entry->id)->with('success', 'Actualizado correctamente.');
+        return redirect()->route('answers.edit', $entry->id)
+            ->with('success', 'Actualizado correctamente.');
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy($id)
     {
         $entry = Entry::findOrFail($id);
-        if ($entry->user_id !== Auth::user()->id) {
-            abort(403, 'No tienes permiso para editar este registro.');
+
+        if ($entry->user_id !== Auth::id() && !Auth::user()->hasRole('admin')) {
+            abort(403, 'No tienes permiso para eliminar este registro.');
         }
-        if (! $entry->is_editable) {
-            return redirect()->route('dashboard')
-                ->with('error', 'Este formulario ya fue enviado y no puede ser modificado.');
+
+        if (!$entry->is_editable && !Auth::user()->hasRole('admin')) {
+            return redirect()->route('dashboard')->with('error', 'Este formulario ya fue enviado.');
         }
+
         $entry->delete();
-        return  redirect()->route('dashboard');
+
+        return redirect()->route('dashboard')->with('success', 'Formulario eliminado con éxito.');
+    }
+        public function imprimir($id)
+    {
+        // 1. Cargamos los datos exactamente igual que en tu vista web
+        $entry = Entry::with('answers')->findOrFail($id);
+
+        if ($entry->user_id !== Auth::user()->id) {
+            abort(403, 'No tienes permiso para imprimir este registro.');
+        }
+        $idSecion = ($entry->answers->first()->question->section_id);
+
+        $seccion = \App\Models\Sections::with(['questions' => function ($q) {
+            $q->orderBy('sort_order'); // Asegurar orden correcto
+        }])->where('id', $idSecion)->orderBy('sort_order')->first();
+
+        $answersMap = $entry->answers->keyBy('question_id');
+
+        // 2. Generamos el PDF apuntando a una vista nueva y exclusiva para impresión
+        $pdf = Pdf::loadView('entries.pdf', [
+            'entry' => $entry,
+            'seccion' => $seccion,
+            'answersMap' => $answersMap,
+        ]);
+
+        // 3. Devolvemos el archivo para que el navegador lo descargue
+        return $pdf->stream('formulario_' . $entry->id . '.pdf');
     }
 }

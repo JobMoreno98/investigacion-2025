@@ -31,7 +31,7 @@ Route::middleware(['auth', 'datos.generales'])->group(function () {
         'categorias' => 'categoria' // asegura que el parámetro sea {categoria}
     ]);
     Route::redirect('settings', 'settings/profile');
-
+    Route::get('/imprimir/{id}', [AnswerController::class, 'imprimir'])->name('answers.imprimir');
     Route::get('settings/profile', Profile::class)->name('profile.edit');
     Route::get('settings/password', Password::class)->name('user-password.edit');
     //Route::get('settings/appearance', Appearance::class)->name('appearance.edit');
@@ -47,7 +47,8 @@ Route::middleware(['auth', 'datos.generales'])->group(function () {
         $entryId = $request->input('entry_id'); // Para excluir el propio registro al editar
 
         // 1. Si no hay código, retornamos vacío
-        if (!$baseCode) return response()->json(['unique_code' => '']);
+        if (!$baseCode)
+            return response()->json(['unique_code' => '']);
 
         // 2. Función recursiva para encontrar el siguiente libre
         $finalCode = $baseCode;
@@ -55,10 +56,11 @@ Route::middleware(['auth', 'datos.generales'])->group(function () {
 
         // Buscamos si existe algun 'Answer' para ESTA pregunta con ESTE valor
         // Excluyendo nuestro propio entry_id (si estamos editando)
-        while (Answer::where('question_id', $questionId)
-            ->where('value', $finalCode)
-            ->when($entryId, fn($q) => $q->where('entry_id', '!=', $entryId))
-            ->exists()
+        while (
+            Answer::where('question_id', $questionId)
+                ->where('value', $finalCode)
+                ->when($entryId, fn($q) => $q->where('entry_id', '!=', $entryId))
+                ->exists()
         ) {
             $finalCode = $baseCode . '_' . $counter;
             $counter++;
