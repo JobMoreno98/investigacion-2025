@@ -3,6 +3,7 @@
 use App\Http\Controllers\AnswerController;
 use App\Http\Controllers\CategoriasController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ReportController;
 use App\Livewire\Settings\Appearance;
 use App\Livewire\Settings\Password;
 use App\Livewire\Settings\Profile;
@@ -68,4 +69,8 @@ Route::middleware(['auth', 'datos.generales'])->group(function () {
 
         return response()->json(['unique_code' => $finalCode]);
     })->name('api.validate.folio');
+
+    Route::get('/reporte-general', [ReportController::class, 'generarReporteGeneral'])->name('reporte.general');
+    Route::get('/informe-impacto', [ReportController::class, 'generarInformeImpacto'])->name('reporte.impacto');
+    Route::get('/reporte-perfil', [ReportController::class, 'generarReportePerfil'])->name('reporte.perfil');
 });

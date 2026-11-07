@@ -24,4 +24,16 @@ class Entry extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    // Relación para obtener la sección
+    public function section()
+    {
+        return $this->belongsTo(Sections::class, 'section_id');
+    }
+
+    // Relación VITAL para traer los sub-formularios anidados automáticamente
+    public function children()
+    {
+        return $this->hasMany(Entry::class, 'parent_entry_id');
+    }
 }

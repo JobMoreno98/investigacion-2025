@@ -86,8 +86,6 @@ class StoreSurveyRequest extends FormRequest
     protected function failedValidation(Validator $validator)
     {
         // Esto detendrá el sistema y te mostrará en pantalla gigante qué campo está fallando
-        dd($validator->errors()->toArray());
-
         parent::failedValidation($validator);
     }
 

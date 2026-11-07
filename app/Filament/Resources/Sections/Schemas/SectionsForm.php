@@ -17,6 +17,7 @@ use Filament\Schemas\Schema;
 use Illuminate\Support\Str;
 use Filament\Forms\Components\Component;
 use Filament\Schemas\Components\Component as ComponentsComponent;
+use Filament\Forms\Get;
 
 class SectionsForm
 {
@@ -50,8 +51,6 @@ class SectionsForm
                         ->label('Texto de Ayuda / Instrucciones')
                         ->placeholder('Ej: Sube el archivo en formato PDF, máximo 5MB.')->autosize(),
 
-
-
                     Section::make()->schema([
                         Select::make('type')->label('Tipo')
                             ->options([
@@ -68,10 +67,13 @@ class SectionsForm
                                 'user' => 'Referencia a usuarios (Dinámico)',
                                 'scored_text' => 'Puntuación con Justificación',
                             ])
-                            ->live()
-                            // Limpiamos las opciones al cambiar de tipo para evitar basura en el JSON
-                            ->afterStateUpdated(fn($set) => $set('options', []))
-                            ->reactive() // Para mostrar/ocultar opciones
+                            ->live() // Solo usamos live()
+                            // Protegemos para que solo borre options si REALMENTE cambiaste el tipo
+                            ->afterStateUpdated(function ($set, $state, $old) {
+                                if ($state !== $old) {
+                                    $set('options', []);
+                                }
+                            })
                             ->required(),
 
                         // --- CONFIGURACIÓN ESPECÍFICA PARA EL REPEATER ---
@@ -123,23 +125,19 @@ class SectionsForm
                             ->collapsible()
                             ->itemLabel(fn(array $state): ?string => $state['label'] ?? null) // Pone el título en la barrita colapsada
                             ->visible(fn($get) => in_array($get('type'), ['select', 'repeater_awards'])),
-
                         Select::make('options.catalog_name')
                             ->label('Fuente de Datos')
                             ->helperText('Selecciona qué lista de la base de datos se cargará.')
-                            ->visible(fn($get) => $get('type') === 'catalog') // Solo visible si es tipo catálogo
-                            ->required()
-                            ->searchable()
+                            ->visible(fn($get) => $get('type') === 'catalog')
+                            ->required(fn($get) => $get('type') === 'catalog')
+                            ->live() // <--- OBLIGA a Livewire a atrapar el valor en tiempo real
+                            ->native(true) // <--- Evita bugs visuales de Javascript
                             ->options(function () {
-                                // 1. Obtenemos los catálogos universales (Ciudades, Hospitales...)
-                                $universal = CatalogItem::query()
+                                return \App\Models\CatalogItem::query()
                                     ->distinct()
-                                    ->pluck('catalog_type')
-                                    ->mapWithKeys(fn($type) => [$type => Str::ucfirst($type)])
+                                    ->pluck('catalog_type', 'catalog_type') // ['disciplinas' => 'disciplinas']
+                                    ->map(fn($item) => \Illuminate\Support\Str::ucfirst($item))
                                     ->toArray();
-
-                                // 3. Fusionamos ambos arrays para que el admin elija cualquiera
-                                return $universal;
                             }),
                         // =========================================================
                         // CONFIGURACIÓN PARA TIPO: REFERENCIA
@@ -161,9 +159,9 @@ class SectionsForm
                                             ->reactive()
                                             ->options(
                                                 fn($get) =>
-                                                filled($get('options.source_section_id'))
+                                                    filled($get('options.source_section_id'))
                                                     ? Questions::where('section_id', $get('options.source_section_id'))
-                                                    ->pluck('label', 'id')
+                                                        ->pluck('label', 'id')
                                                     : []
                                             )
                                             ->searchable()
@@ -232,8 +230,9 @@ class SectionsForm
                                         // Buscamos el ID de la sección actual que estamos editando
                                         $sectionId = $livewire->record?->id;
 
-                                        if (!$sectionId) return []; // Si estamos creando la sección por primera vez, devolvemos vacío
-
+                                        if (!$sectionId)
+                                            return []; // Si estamos creando la sección por primera vez, devolvemos vacío
+                            
                                         // Retornamos las preguntas de esta misma sección
                                         return \App\Models\Questions::where('section_id', $sectionId)
                                             ->pluck('label', 'id');

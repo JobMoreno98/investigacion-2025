@@ -177,7 +177,7 @@ class AnswerController extends Controller
 
         return redirect()->route('dashboard')->with('success', 'Formulario eliminado con éxito.');
     }
-        public function imprimir($id)
+    public function imprimir($id)
     {
         // 1. Cargamos los datos exactamente igual que en tu vista web
         $entry = Entry::with('answers')->findOrFail($id);
@@ -187,9 +187,11 @@ class AnswerController extends Controller
         }
         $idSecion = ($entry->answers->first()->question->section_id);
 
-        $seccion = \App\Models\Sections::with(['questions' => function ($q) {
-            $q->orderBy('sort_order'); // Asegurar orden correcto
-        }])->where('id', $idSecion)->orderBy('sort_order')->first();
+        $seccion = \App\Models\Sections::with([
+            'questions' => function ($q) {
+                $q->orderBy('sort_order'); // Asegurar orden correcto
+            }
+        ])->where('id', $idSecion)->orderBy('sort_order')->first();
 
         $answersMap = $entry->answers->keyBy('question_id');
 
