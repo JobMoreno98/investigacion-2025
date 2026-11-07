@@ -22,7 +22,7 @@ class ReportController extends Controller
         }
 
         // Consultamos todas las categorías
-        $categorias = Categorias::orderBy('id')->get();
+        $categorias = Categorias::orderBy('sort_order')->get();
         $reportData = [];
 
         foreach ($categorias as $categoria) {
@@ -115,7 +115,7 @@ class ReportController extends Controller
             ->whereHas('section', fn($q) => $q->where('title', 'Datos Laborales'))->first();
 
         // 2. Obtener el resto de las categorías/secciones (excluyendo las dos de arriba para no repetirlas)
-        $categorias = Categorias::orderBy('id')->get();
+        $categorias = Categorias::orderBy('sort_order')->get();
         $reportData = [];
 
         foreach ($categorias as $categoria) {

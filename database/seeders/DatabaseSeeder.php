@@ -41,5 +41,7 @@ class DatabaseSeeder extends Seeder
         $this->call(ProgramasAcademicosSeeder::class);
         $this->call(DivisionesDepartamentosSeeder::class);
         $this->call(ProyectosInvestigacion::class);
+        $this->call(AreasConocimientoCatalogSeeder::class);
+        $this->call(DisciplinasSeeder::class);
     }
 }

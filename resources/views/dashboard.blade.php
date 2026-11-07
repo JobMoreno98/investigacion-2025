@@ -168,27 +168,6 @@
                 </flux:button>
             </flux:card>
 
-            {{-- 3. TARJETA: PROYECTOS DE INVESTIGACIÓN (Atajo visual) --}}
-            <flux:card
-                class="flex flex-col justify-between hover:shadow-lg transition-shadow border-t-4 border-t-purple-500 bg-white">
-                <div>
-                    <div class="flex items-center gap-3 mb-4">
-                        <div class="p-2 bg-purple-100 text-purple-600 rounded-lg">
-                            <flux:icon name="beaker" class="w-6 h-6" />
-                        </div>
-                        <flux:heading size="md" class="font-bold text-gray-800">Investigación</flux:heading>
-                    </div>
-                    <flux:text class="text-sm text-gray-600 mb-6">
-                        Registra y administra tus proyectos de investigación, montos de apoyo y periodos de ejecución
-                        actuales.
-                    </flux:text>
-                </div>
-                <flux:button href="{{ route('categorias.show', 'proyectos-de-investigacion') }}" variant="outline"
-                    class="w-full flex justify-center items-center gap-2">
-                    Gestionar proyectos
-                </flux:button>
-            </flux:card>
-
         </div>
     </div>
 </x-layouts.app>
