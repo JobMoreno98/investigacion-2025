@@ -6,6 +6,7 @@ use App\Http\Requests\StoreSurveyRequest;
 use App\Models\AnswerFullView;
 use App\Models\Ciclos;
 use App\Models\Entry;
+use App\Models\Questions;
 use App\Models\Sections;
 use App\Services\SurveySubmissionService;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -47,49 +48,34 @@ class AnswerController extends Controller
      */
     public function store(StoreSurveyRequest $request)
     {
-        // 1. Identificar si es un proyecto de investigación
-        $idProyectos = Sections::idProyectos();
-        $esProyecto = in_array($idProyectos, $request->section_ids ?? []);
         $fecha = date('Y-m-d');
 
-        // 2. Buscar el ciclo activo correspondiente
-        if ($esProyecto) {
-            $ciclo = Ciclos::whereJsonContains('sistemas', 'investigacion')
-                ->where('activo', true)
-                ->whereDate('inicio', '<=', $fecha)
-                ->whereDate('fin', '>=', $fecha)
-                ->latest()
-                ->first();
-        } else {
-            // Si es Datos Generales u otro, solo trae el ciclo activo general más reciente
-            $ciclo = Ciclos::where('activo', true)->latest()->first();
-        }
+        $ciclo = Ciclos::whereJsonContains('sistemas', 'sia')
+            ->where('activo', true)
+            ->whereDate('inicio', '<=', $fecha)
+            ->whereDate('fin', '>=', $fecha)
+            ->latest()
+            ->first();
 
-        // 3. Validar si hay ciclo activo o si el usuario es administrador
-        if (!$ciclo && !Auth::user()->hasRole('admin')) {
+        if (!isset($ciclo->id) || !Auth::user()->hasRole('admin')) {
             return redirect()->route('dashboard')
                 ->with('error', 'Alto. No hay un ciclo activo en este momento o estás fuera de tiempo.');
         }
 
-        // 4. Obtener los datos ya validados por el FormRequest
         $validated = $request->validated();
 
-        // 5. Transacción de Base de Datos limpia usando el servicio
         $mainEntry = DB::transaction(function () use ($request, $validated, $ciclo) {
-            // Creamos el Entry principal con su sección y ciclo
             $entry = Entry::create([
                 'user_id' => Auth::id(),
                 'ciclo_id' => $ciclo->id,
-                'section_id' => $request->section_ids[0] // Evita el error 1364 Field 'section_id' doesn't have a default value
+                'section_id' => $request->section_ids[0] 
             ]);
 
-            // Delegamos el guardado de respuestas y archivos al servicio
             $this->surveyService->saveAnswers($entry, $validated, $request);
 
             return $entry;
         });
 
-        // 6. Redirigir a la vista de edición correcta (answers.edit)
         return redirect()->route('answers.edit', $mainEntry->id)
             ->with('success', 'Registrado correctamente.');
     }
@@ -127,11 +113,20 @@ class AnswerController extends Controller
             return back()->with('error', 'Registro corrupto o vacío');
         }
 
-        $seccion = Sections::where('id', $sectionId)
-            ->with(['questions' => fn($q) => $q->orderBy('sort_order')])
-            ->firstOrFail();
+        $seccionesProhibidas = Sections::where('investigacion', true)->pluck('id')->all();
 
-        $existingAnswers = $entry->answers->pluck('value', 'question_id')->toArray();
+        $seccion = Sections::where('investigacion', false)
+            ->with([
+                'questions' => fn($q) => $q
+                    ->where(
+                        fn($q) => $q
+                            ->where('type', '!=', 'sub_form')
+                            ->orWhereNotIn('options->target_section_id', $seccionesProhibidas)
+                    )
+                    ->orderBy('sort_order')
+            ])
+            ->findOrFail($sectionId);
+        $existingAnswers = $entry->answers->pluck('value_text', 'question_id')->toArray();
 
         return view('respuestas.edit', compact('entry', 'seccion', 'existingAnswers'));
     }

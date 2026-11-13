@@ -37,6 +37,7 @@
                                     @php
                                         $item = QuestionHelper::prepare($question, $existingAnswers);
                                         $isSubForm = $item['type'] === 'sub_form';
+                                        
                                     @endphp
 
                                     <div @if ($item['isDependent'] && $item['parentId'])

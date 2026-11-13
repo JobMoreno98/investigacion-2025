@@ -22,6 +22,8 @@
                     $answers[$childQ->id] ?? ($childQ->options['default_value'] ?? '')
                 );
 
+                //dd(json_decode($childValue));
+
                 $childComponent = 'inputs.' . $childQ->type;
 
                 if (!view()->exists("components.{$childComponent}")) {
@@ -33,7 +35,7 @@
                 <x-dynamic-component
                     :component="$childComponent"
                     :question="$childQ"
-                    :value="$childValue"
+                    :value="json_decode($childValue)"
                     :name="$childInputName"
                 />
             </div>

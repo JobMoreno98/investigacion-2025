@@ -13,4 +13,5 @@ class AnswerFullView extends Model
     protected $casts = [
         'is_editable' => 'boolean',
     ];
+    
 }
