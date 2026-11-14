@@ -28,7 +28,8 @@
 
                 {{-- Nombre Principal --}}
                 <h1 class="text-6xl font-extrabold tracking-tight text-white drop-shadow-2xl">
-                    {{ config('app.name', 'SIA') }}
+                    <x-app-logo-icon class="size-10 fill-current text-white dark:text-black" />
+                   
                 </h1>
 
                 {{-- Subtítulo opcional --}}

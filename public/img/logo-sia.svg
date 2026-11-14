@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 200" width="100%" height="100%">
+  <!-- 1. FONDO: Cambia 'transparent' por un código HEX o nombre de color (ej. '#3498db') -->
+  <rect width="100%" height="100%" fill="transparent" id="background" />
+  
+  <!-- 2. TEXTO 'SIA' (Con sombra básica para separar del fondo) -->
+  <text x="400" y="305" font-family="&#39;Arial Black&#39;, Impact, sans-serif" font-size="280" font-weight="bold" fill="rgba(0,0,0,0.1)" text-anchor="middle" letter-spacing="15">SIA</text>
+  <text x="400" y="300" font-family="&#39;Arial Black&#39;, Impact, sans-serif" font-size="280" font-weight="bold" fill="#ffffff" stroke="#cccccc" stroke-width="3" text-anchor="middle" letter-spacing="15">SIA</text>
+  
+  <!-- 3. BIRRETE (Posicionado sobre la letra 'I') -->
+  <g transform="translate(315, 40) scale(0.7)">
+     <!-- Base del birrete -->
+     <path d="M 50 100 Q 100 130 150 100 L 150 120 Q 100 150 50 120 Z" fill="#666666" />
+     <path d="M 50 100 L 50 120 L 150 120 L 150 100 Z" fill="#777777" />
+     
+     <!-- Rombo superior -->
+     <polygon points="100,60 190,90 100,120 10,90" fill="#888888" stroke="#555555" stroke-width="2" />
+     
+     <!-- Borla amarilla -->
+     <circle cx="100" cy="90" r="6" fill="#333333" />
+     <path d="M 100 90 L 160 110 Q 170 150 165 170 L 175 170 Q 170 150 160 110" fill="#FFD700" stroke="#DAA520" stroke-width="1" />
+     <circle cx="170" cy="175" r="8" fill="#FFD700" />
+  </g>
+</svg>
