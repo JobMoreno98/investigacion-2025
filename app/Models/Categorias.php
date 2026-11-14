@@ -2,13 +2,29 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasSistemas;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 
 class Categorias extends Model
 {
+    use HasSistemas;
     protected $guarded = [];
     const DATOS_GENERALES = 'Datos Generales';
+
+
+    protected function sistemaPivotTable(): string
+    {
+        return 'categoria_sistema';
+    }
+    protected function sistemaPivotKey(): string
+    {
+        return 'categoria_id';
+    }
+    protected function slugSource(): string
+    {
+        return 'titulo';
+    }
 
     public function secciones()
     {

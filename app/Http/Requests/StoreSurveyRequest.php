@@ -12,6 +12,9 @@ use Illuminate\Http\Exceptions\HttpResponseException;
 
 class StoreSurveyRequest extends FormRequest
 {
+
+    private ?int $ownerIdCache = null;
+
     public function authorize(): bool
     {
         return true;
@@ -178,6 +181,10 @@ class StoreSurveyRequest extends FormRequest
                 $choices = array_column($question->options['choices'] ?? [], 'value');
                 $rules["{$fieldKey}.*.tipo"] = !empty($choices) ? ['required', Rule::in($choices)] : 'required';
                 break;
+            case 'reference':
+                $options = app(\App\Services\EntryReader::class)->referenceOptions($question, $this->ownerId());
+                $fieldRules[] = $options ? Rule::in(array_keys($options)) : 'prohibited';
+                break;
         }
 
         if (!empty($fieldRules)) {
@@ -237,5 +244,24 @@ class StoreSurveyRequest extends FormRequest
             'min' => 'El campo ":attribute" debe ser un número entero mayor o igual a cero.',
             'prohibited' => 'El catálogo seleccionado está vacío o no es válido.',
         ];
+    }
+    protected function ownerId(): int
+    {
+        if ($this->ownerIdCache !== null) {
+            return $this->ownerIdCache;
+        }
+
+        $ownerId = null;
+
+        if ($this->isMethod('put') || $this->isMethod('patch')) {
+            $param = $this->route('answer') ?? $this->route('id') ?? $this->route('proyecto');
+            $entryId = $param instanceof \Illuminate\Database\Eloquent\Model ? $param->getKey() : $param;
+
+            if ($entryId) {
+                $ownerId = \App\Models\Entry::whereKey($entryId)->value('user_id');
+            }
+        }
+
+        return $this->ownerIdCache = (int) ($ownerId ?: \Illuminate\Support\Facades\Auth::id());
     }
 }

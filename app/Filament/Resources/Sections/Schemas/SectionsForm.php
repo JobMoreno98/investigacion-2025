@@ -51,6 +51,40 @@ class SectionsForm
                         ->label('Texto de Ayuda / Instrucciones')
                         ->placeholder('Ej: Sube el archivo en formato PDF, máximo 5MB.')->autosize(),
 
+                    Section::make('Lógica Condicional (Dependencias)')
+                        ->description('Oculta esta pregunta hasta que el usuario responda algo específico en otra.')
+                        ->collapsed()
+                        ->schema([
+                            Toggle::make('options.is_dependent')
+                                ->label('¿Depende de otra pregunta?')
+                                ->live() // Hace que el formulario reaccione al activarlo
+                                ->inline(),
+
+                            Grid::make(2)->schema([
+                                Select::make('options.depends_on_question_id')
+                                    ->label('¿De qué pregunta depende?')
+                                    ->helperText('Solo puedes seleccionar preguntas que ya estén guardadas en esta sección.')
+                                    ->options(function ($livewire) {
+                                        // Buscamos el ID de la sección actual que estamos editando
+                                        $sectionId = $livewire->record?->id;
+
+                                        if (!$sectionId)
+                                            return []; // Si estamos creando la sección por primera vez, devolvemos vacío
+
+                                        // Retornamos las preguntas de esta misma sección
+                                        return \App\Models\Questions::where('section_id', $sectionId)
+                                            ->pluck('label', 'id');
+                                    })
+                                    ->searchable()
+                                    ->required(fn($get) => $get('options.is_dependent')),
+
+                                TextInput::make('options.depends_on_value')
+                                    ->label('Mostrar cuando la respuesta sea igual a:')
+                                    ->placeholder('Ej: Si, Otra, 1')
+                                    ->required(fn($get) => $get('options.is_dependent')),
+                            ])->visible(fn($get) => $get('options.is_dependent')),
+                        ]),
+
                     Section::make()->schema([
                         Select::make('type')->label('Tipo')
                             ->options([
@@ -159,17 +193,25 @@ class SectionsForm
                                             ->reactive()
                                             ->options(
                                                 fn($get) =>
-                                                    filled($get('options.source_section_id'))
+                                                filled($get('options.source_section_id'))
                                                     ? Questions::where('section_id', $get('options.source_section_id'))
-                                                        ->pluck('label', 'id')
+                                                    ->pluck('label', 'id')
                                                     : []
                                             )
                                             ->searchable()
                                             ->required(fn($get) => filled($get('options.source_section_id')))
                                             ->native(false)
                                             ->disabled(fn($get) => blank($get('options.source_section_id')))
-                                            ->placeholder('Selecciona una pregunta de la lista...')
-
+                                            ->placeholder('Selecciona una pregunta de la lista...'),
+                                        Select::make('options.scope')
+                                            ->label('3. ¿Qué respuestas se muestran?')
+                                            ->options([
+                                                'user' => 'Solo las del usuario que llena el formulario',
+                                                'all'  => 'Las de todos los usuarios',
+                                            ])
+                                            ->default('user')
+                                            ->required()
+                                            ->native(false),
                                     ])->visible(fn($get) => $get('type') === 'reference'),
                             ]),
 
@@ -213,42 +255,9 @@ class SectionsForm
                             ->helperText('Usa esto para conectar preguntas entre sí.'),
                     ]),
 
-                    Section::make('Lógica Condicional (Dependencias)')
-                        ->description('Oculta esta pregunta hasta que el usuario responda algo específico en otra.')
-                        ->collapsed()
-                        ->schema([
-                            Toggle::make('options.is_dependent')
-                                ->label('¿Depende de otra pregunta?')
-                                ->live() // Hace que el formulario reaccione al activarlo
-                                ->inline(),
-
-                            Grid::make(2)->schema([
-                                Select::make('options.depends_on_question_id')
-                                    ->label('¿De qué pregunta depende?')
-                                    ->helperText('Solo puedes seleccionar preguntas que ya estén guardadas en esta sección.')
-                                    ->options(function ($livewire) {
-                                        // Buscamos el ID de la sección actual que estamos editando
-                                        $sectionId = $livewire->record?->id;
-
-                                        if (!$sectionId)
-                                            return []; // Si estamos creando la sección por primera vez, devolvemos vacío
-                            
-                                        // Retornamos las preguntas de esta misma sección
-                                        return \App\Models\Questions::where('section_id', $sectionId)
-                                            ->pluck('label', 'id');
-                                    })
-                                    ->searchable()
-                                    ->required(fn($get) => $get('options.is_dependent')),
-
-                                TextInput::make('options.depends_on_value')
-                                    ->label('Mostrar cuando la respuesta sea igual a:')
-                                    ->placeholder('Ej: Si, Otra, 1')
-                                    ->required(fn($get) => $get('options.is_dependent')),
-                            ])->visible(fn($get) => $get('options.is_dependent')),
-                        ]),
 
 
-                ])
+                ])->columns(3)
                 ->orderable('sort_order')
                 ->collapsible(),
         ]);

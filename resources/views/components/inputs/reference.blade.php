@@ -1,50 +1,65 @@
-@props(['question', 'value' => '', 'name'])
+@props([
+    'question',
+    'value' => '',
+    // Nombre del campo del formulario (p. ej. answers[12] o sub_answers[5][12]). Lo normal es que lo pase el padre.
+    'name' => null,
+    // Dueño del registro que se está llenando/editando. Si no se pasa, el usuario logueado.
+    // (Un admin que edita el registro de otro usuario debe pasar el user_id del dueño.)
+    'ownerId' => null,
+    // ref_entry_id guardado de la respuesta (solo alcance "user"); selecciona la opción exacta al editar.
+    'selectedEntryId' => null,
+])
 
 @php
+    // Si el padre no manda el nombre, se usa el de una pregunta de primer nivel: answers[ID].
+    // Dentro de un sub-formulario el padre SÍ debe pasarlo (sub_answers[ID_PADRE][ID]).
+    $name = $name ?: "answers[{$question->id}]";
 
-    $options = [];
-    $sourceQuestionId = $question->options['source_question_id'] ?? null;
+    /** @var \App\Services\EntryReader $reader */
+    $reader = app(\App\Services\EntryReader::class);
 
-    // Solo buscamos si hay una pregunta origen configurada
-    if ($sourceQuestionId) {
-        // Usamos el modelo Answer directamente
-        $options = \App\Models\Answer::query()
-            ->where('question_id', $sourceQuestionId)
-            // Filtramos por el usuario logueado (importante)
-            
-            // Evitamos duplicados y obtenemos lista simple
-            ->distinct()
-            ->pluck('value', 'value')
-            ->toArray();
-    }
+    // options.scope:  "user" = solo los registros del usuario  |  "all" = respuestas de todos los usuarios
+    $isUserScope = $reader->referenceScope($question) === \App\Services\EntryReader::SCOPE_USER;
+
+    // user: [entry_id => texto]    all: [texto => texto]
+    $options = $reader->referenceOptions($question, (int) ($ownerId ?? auth()->id()));
 
     $isEmpty = empty($options);
-    $enableSearch = !empty($options) && count($options) > 10;
 
-    $placeholder = $isEmpty ? 'No hay datos previos (Completa la sección anterior)' : 'Selecciona una opción...';
+    // Opción que debe aparecer seleccionada:
+    //  1) el ref_entry_id guardado, 2) el valor enviado (id tras un error de validación, o texto en "all"),
+    //  3) el texto guardado (registros anteriores a ref_entry_id).
+    $selectedKey = null;
 
+    if ($isUserScope && $selectedEntryId !== null && array_key_exists((int) $selectedEntryId, $options)) {
+        $selectedKey = (int) $selectedEntryId;
+    } elseif (is_scalar($value) && $value !== '') {
+        if (array_key_exists((string) $value, $options)) {
+            $selectedKey = (string) $value;
+        } elseif (($found = array_search((string) $value, $options, true)) !== false) {
+            $selectedKey = $found;
+        }
+    }
+
+    $placeholder = $isEmpty
+        ? ($isUserScope ? 'Aún no tienes registros en la sección de origen' : 'Todavía no hay respuestas registradas')
+        : 'Selecciona una opción...';
+
+    $scopeHint = $isUserScope
+        ? 'Se muestran solo tus registros.'
+        : 'Se muestran las respuestas de todos los usuarios.';
 @endphp
 
-{{-- 
-    3. RENDERIZADO
-    Usamos tu componente Wrapper (ui.wrapper) para mantener el diseño consistente.
-    Le pasamos los props que tu wrapper espera.
---}}
 <x-inputs.wrapper :label="$question->label" :name="$name" :required="$question->is_required" :helperText="$question->helper_text"
-    {{ $attributes->whereStartsWith('class') }} {{-- Pasamos clases extra si las hubiera --}}>
+    :class="$attributes->get('class')">
 
-    {{-- ESTO ES EL SLOT: El Select real --}}
-    <select id="{{ $name }}" name="{{ $name }}" {{-- Esto captura el wire:model del padre automáticamente --}}
-        @if ($enableSearch) placeholder="Buscar..." @endif
-        class="form-select border border-stone-300 p-2 text-stone-900 border-gray-300 rounded-md shadow-sm focus:border-blue-500 
-        focus:ring focus:ring-blue-200 w-full"
-        @if ($isEmpty) disabled @endif>
-        {{-- Opción vacía / Placeholder --}}
+    <select id="{{ $name }}" name="{{ $name }}"
+        class="form-select w-full rounded-md border border-stone-300 p-2 text-stone-900 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200"
+        @disabled($isEmpty)>
         <option value="">{{ $placeholder }}</option>
 
-        {{-- Iteramos las opciones que sacamos de la BD --}}
-        @foreach ($options as $val => $text)
-            <option value="{{ $val }}" {{-- Marcamos seleccionado si coincide con el valor guardado --}} @selected((string) $val === (string) $value)>
+        @foreach ($options as $key => $text)
+            <option value="{{ $key }}" @selected($selectedKey !== null && (string) $key === (string) $selectedKey)>
                 {{ $text }}
             </option>
         @endforeach

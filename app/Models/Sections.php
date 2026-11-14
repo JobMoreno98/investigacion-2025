@@ -6,10 +6,14 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Models\Questions;
 use App\Models\Categorias;
+use App\Models\Concerns\HasSistemas;
+use App\Models\Concerns\HasSlug;
 use Illuminate\Support\Facades\Auth;
 
 class Sections extends Model
 {
+    use HasSistemas;
+    use HasSlug;
     use SoftDeletes;
     const EVALUACION_NUEVO = 'Evaluaciones Nuevo';
     const EVALUACION_CONTINUACION = 'Evaluaciones Continuación';
@@ -21,6 +25,22 @@ class Sections extends Model
     protected $casts = [
         'investigacion' => 'boolean',
     ];
+
+    // Categorias
+    use HasSistemas, HasSlug;
+
+    protected function sistemaPivotTable(): string
+    {
+        return 'categoria_sistema';
+    }
+    protected function sistemaPivotKey(): string
+    {
+        return 'categoria_id';
+    }
+    protected function slugSource(): string
+    {
+        return 'titulo';
+    }
 
     public function categorias()
     {
