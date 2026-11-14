@@ -7,7 +7,7 @@
     <script src="https://cdn.jsdelivr.net/npm/tom-select@2.4.3/dist/js/tom-select.complete.min.js"></script>
 </head>
 
-<body class="min-h-screen bg-white">
+<body class="min-h-screen bg-white" x-data="{ showSidebar: true }">
     <div id="page-loader"
         style="position:fixed;inset:0;z-index:9999;background:white;display:none;align-items:center;justify-content:center;">
         <div
@@ -23,7 +23,8 @@
         }
     </style>
 
-    <flux:sidebar sticky stashable class="border-e border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900">
+    <flux:sidebar sticky stashable x-bind:class="{ 'lg:!hidden': !showSidebar }"
+        class="border-e border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900">
         <flux:sidebar.toggle class="lg:hidden" icon="x-mark" />
 
         <a href="{{ route('dashboard') }}" class="me-5 flex items-center space-x-2 rtl:space-x-reverse" wire:navigate>
@@ -31,7 +32,7 @@
         </a>
 
         <flux:navlist>
-            <livewire:navigation-bar-mobile />
+            <livewire:navigation-bar />
         </flux:navlist>
 
         <flux:spacer />
@@ -80,7 +81,14 @@
         </flux:dropdown>
     </flux:sidebar>
 
-    <!-- Mobile User Menu -->
+    <!-- Desktop Toggle Header -->
+    <flux:header class="hidden lg:flex bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-700">
+        {{-- Usamos un botón normal conectado a nuestra variable de Alpine --}}
+        <flux:button variant="subtle" icon="bars-3" class="-ml-2" x-on:click="showSidebar = !showSidebar" />
+        <flux:spacer />
+    </flux:header>
+
+    <!-- Mobile User Menu (Este código ya lo tienes) -->
     <flux:header class="lg:hidden">
         <flux:sidebar.toggle class="lg:hidden" icon="bars-2" inset="left" />
 
@@ -130,6 +138,7 @@
     {{ $slot }}
 
     <script src="{{ asset('js/validateForm.js') }}"></script>
+
     <script>
         function initPageLoader() {
 

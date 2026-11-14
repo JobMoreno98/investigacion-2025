@@ -24,7 +24,7 @@
                                 @php
                                  
                                     $titleAnswer = $entry->answers->sortBy(fn($a) => $a->question->sort_order)->first();
-                                    $displayTitle = $titleAnswer ? $titleAnswer->value : 'Sin título';
+                                    $displayTitle = $titleAnswer ? $titleAnswer->value_text : 'Sin título';
                                 @endphp
 
                                 <li class="py-3 flex justify-between items-center hover:bg-gray-50 transition p-2 rounded">
