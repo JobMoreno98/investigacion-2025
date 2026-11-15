@@ -7,7 +7,7 @@ use App\Models\AnswerFullView;
 use App\Models\Ciclos;
 use App\Models\Entry;
 use App\Models\Sections;
-use App\Models\Sistema;
+use App\Models\Sistemas;
 use App\Services\SistemaFilter;
 use App\Services\SurveySubmissionService;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -117,22 +117,10 @@ class AnswerController extends Controller
             return back()->with('error', 'Registro corrupto o vacío');
         }
 
-        // Específico de esta aplicación (SIA): excluye lo que pertenece a Investigación.
-        // Cuando verifiques que ninguna sección de Investigación quedó también en SIA,
-        // puedes quitar esto y dejar solo forSistema() + SistemaFilter.
-        $seccionesProhibidas = Sections::forSistema('investigacion')->pluck('id')->all();
-
-        $seccion = Sections::forSistema(Sistema::slugActual())
-            ->notInSistema('investigacion')
-            ->with([
-                'questions' => fn ($q) => $q
-                    ->where(
-                        fn ($q) => $q
-                            ->where('type', '!=', 'sub_form')
-                            ->orWhereNotIn('options->target_section_id', $seccionesProhibidas)
-                    )
-                    ->orderBy('sort_order')
-            ])
+        // Solo secciones de este sistema; la relación questions() ya viene ordenada por sort_order.
+        // Los sub-formularios que no estén disponibles en este sistema los quita SistemaFilter.
+        $seccion = Sections::forSistema(Sistemas::slugActual())
+            ->with('questions')
             ->findOrFail($sectionId);
 
         $seccion->setRelation('questions', $this->sistemaFilter->questions($seccion->questions));
@@ -219,7 +207,7 @@ class AnswerController extends Controller
      */
     private function seccionDelSistema($id): Sections
     {
-        $seccion = Sections::forSistema(Sistema::slugActual())
+        $seccion = Sections::forSistema(Sistemas::slugActual())
             ->with('questions')
             ->findOrFail($id);
 
