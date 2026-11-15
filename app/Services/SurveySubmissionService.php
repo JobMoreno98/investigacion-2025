@@ -16,7 +16,7 @@ class SurveySubmissionService
     /** @var array<int, Collection> preguntas por sección, indexadas por id (caché por petición) */
     private array $questionsBySection = [];
 
-    public function __construct(private EntryReader $reader)
+    public function __construct(private EntryReader $reader, private SistemaFilter $sistemaFilter)
     {
     }
 
@@ -162,14 +162,18 @@ class SurveySubmissionService
         return $sectionId ? (int) $sectionId : null;
     }
 
-    /** Preguntas de una sección indexadas por id: una consulta por sección y petición. */
+    /** Preguntas de una sección indexadas por id (filtradas por sistema): una consulta por sección y petición. */
     private function questionsOf(int $sectionId): Collection
     {
-        return $this->questionsBySection[$sectionId] ??= Questions::query()
-            ->where('section_id', $sectionId)
-            ->orderBy('sort_order')
-            ->get()
-            ->keyBy('id');
+        // Los sub-formularios cuya sección destino no pertenece al sistema actual se descartan:
+        // no se procesan aunque lleguen en la petición, y lo ya guardado de ellos no se toca.
+        return $this->questionsBySection[$sectionId] ??= $this->sistemaFilter->questions(
+            Questions::query()
+                ->where('section_id', $sectionId)
+                ->orderBy('sort_order')
+                ->get()
+                ->keyBy('id')
+        );
     }
 
     /** Respuestas ya guardadas del registro (question_id => Answer): una sola consulta. */

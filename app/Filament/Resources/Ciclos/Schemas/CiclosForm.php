@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Ciclos\Schemas;
 
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\ToggleButtons;
 use Filament\Schemas\Schema;
@@ -16,13 +17,12 @@ class CiclosForm
                 TextInput::make('nombre')->required(),
                 DatePicker::make('inicio')->required(),
                 DatePicker::make('fin')->required(),
-                ToggleButtons::make('sistemas')
-                    ->options([
-                        'sia' => 'SIA',
-                        'investigacion' => 'Investigación',
-                    ])->default('sia')
-                    ->label('Sistema compatible')->multiple()->required()
-                    ->inline(),
+                Select::make('sistemas')
+                    ->label('Sistemas donde aparece')
+                    ->relationship('sistemas', 'nombre')
+                    ->multiple()
+                    ->preload()
+                    ->required(),
 
                 ToggleButtons::make('activo')
                     ->label('Activo')->boolean()->default(true)->required()

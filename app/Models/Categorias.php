@@ -3,24 +3,33 @@
 namespace App\Models;
 
 use App\Models\Concerns\HasSistemas;
+use App\Models\Concerns\HasSlug;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Str;
 
 class Categorias extends Model
 {
-    use HasSistemas;
-    protected $guarded = [];
-    const DATOS_GENERALES = 'Datos Generales';
+    use HasSistemas, HasSlug;
 
+    const DATOS_GENERALES = 'Datos Generales';
+    const SLUG_DATOS_GENERALES = 'datos-generales';
+
+    protected $guarded = [];
+
+    // Columna heredada: se conserva hasta eliminarla en la fase de limpieza.
+    protected $casts = [
+        'sistema' => 'array',
+    ];
 
     protected function sistemaPivotTable(): string
     {
         return 'categoria_sistema';
     }
+
     protected function sistemaPivotKey(): string
     {
         return 'categoria_id';
     }
+
     protected function slugSource(): string
     {
         return 'titulo';
@@ -33,49 +42,8 @@ class Categorias extends Model
 
     public function isDatosGenerales(): bool
     {
-        return $this->titulo === self::DATOS_GENERALES;
-    }
-    protected $casts = [
-        'sistema' => 'array',
-    ];
-
-    protected static function booted(): void
-    {
-        static::creating(function ($model) {
-            $model->slug = static::generateUniqueSlug($model->titulo);
-        });
-
-        static::updating(function ($model) {
-            // Solo regenera el slug si el nombre cambió
-            if ($model->isDirty('titulo')) {
-                $model->slug = static::generateUniqueSlug($model->titulo, $model->id);
-            }
-        });
-    }
-
-    protected static function generateUniqueSlug(string $titulo, $ignoreId = null): string
-    {
-        $slug = Str::slug($titulo);
-        $originalSlug = $slug;
-        $count = 1;
-
-        $query = static::where('slug', $slug);
-
-        if ($ignoreId) {
-            $query->where('id', '!=', $ignoreId);
-        }
-
-        while ($query->exists()) {
-            $slug = "{$originalSlug}-{$count}";
-            $count++;
-
-            $query = static::where('slug', $slug);
-            if ($ignoreId) {
-                $query->where('id', '!=', $ignoreId);
-            }
-        }
-
-        return $slug;
+        return $this->slug === self::SLUG_DATOS_GENERALES
+            || $this->titulo === self::DATOS_GENERALES;
     }
 
     public function getRouteKeyName()

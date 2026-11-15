@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Categorias\Schemas;
 
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\ToggleButtons;
 use Filament\Schemas\Schema;
@@ -14,13 +15,12 @@ class CategoriasForm
             ->components([
                 TextInput::make('titulo')->required(),
                 TextInput::make('descripcion'),
-                ToggleButtons::make('sistema')
-                    ->options([
-                        'sia' => 'SIA',
-                        'investigacion' => 'Investigación',
-                    ])->default('sia')
-                    ->label('Sistema compatible')->multiple()
-                    ->inline(),
+                Select::make('sistemas')
+                    ->label('Sistemas donde aparece')
+                    ->relationship('sistemas', 'nombre')
+                    ->multiple()
+                    ->preload()
+                    ->required(),
             ]);
     }
 }

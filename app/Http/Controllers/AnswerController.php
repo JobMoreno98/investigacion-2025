@@ -6,28 +6,26 @@ use App\Http\Requests\StoreSurveyRequest;
 use App\Models\AnswerFullView;
 use App\Models\Ciclos;
 use App\Models\Entry;
-use App\Models\Questions;
 use App\Models\Sections;
+use App\Models\Sistema;
+use App\Services\SistemaFilter;
 use App\Services\SurveySubmissionService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use RealRashid\SweetAlert\Facades\Alert;
 
 class AnswerController extends Controller
 {
-    protected SurveySubmissionService $surveyService;
-
-    // Inyección de dependencias del nuevo servicio
-    public function __construct(SurveySubmissionService $surveyService)
-    {
-        $this->surveyService = $surveyService;
+    public function __construct(
+        protected SurveySubmissionService $surveyService,
+        protected SistemaFilter $sistemaFilter,
+    ) {
     }
 
     public function index()
     {
         $proyectos = AnswerFullView::where('user_id', Auth::id())
-            ->where('section_title', 'Proyectos de Investigación')
+            ->where('section_id', Sections::idProyectos())
             ->groupBy('entry_id')
             ->orderBy('fecha_creado')
             ->get();
@@ -37,38 +35,45 @@ class AnswerController extends Controller
 
     public function create($id)
     {
-        $seccion = Sections::with('questions')->where('id', $id)->firstOrFail();
+        $seccion = $this->seccionDelSistema($id);
+
         return view('respuestas.create', compact('seccion'));
     }
-    /**
-     * Store a newly created resource in storage.
-     */
+
     /**
      * Store a newly created resource in storage.
      */
     public function store(StoreSurveyRequest $request)
     {
-        $fecha = date('Y-m-d');
+        $slug = Sistema::slugActual();
+        $sectionId = (int) ($request->section_ids[0] ?? 0);
 
-        $ciclo = Ciclos::whereJsonContains('sistemas', 'sia')
-            ->where('activo', true)
-            ->whereDate('inicio', '<=', $fecha)
-            ->whereDate('fin', '>=', $fecha)
-            ->latest()
-            ->first();
+        // Esta aplicación solo registra secciones de su propio sistema.
+        abort_unless(
+            Sections::forSistema($slug)->whereKey($sectionId)->exists(),
+            403,
+            'Esta sección no pertenece a este sistema.'
+        );
 
-        if (!isset($ciclo->id) || !Auth::user()->hasRole('admin')) {
+        $ciclo = Ciclos::forSistema($slug)->vigente()->latest()->first();
+
+        // Un admin puede registrar fuera de la ventana del ciclo: se usa el más reciente del sistema.
+        if (! $ciclo && Auth::user()->hasRole('admin')) {
+            $ciclo = Ciclos::forSistema($slug)->latest()->first();
+        }
+
+        if (! $ciclo) {
             return redirect()->route('dashboard')
                 ->with('error', 'Alto. No hay un ciclo activo en este momento o estás fuera de tiempo.');
         }
 
         $validated = $request->validated();
 
-        $mainEntry = DB::transaction(function () use ($request, $validated, $ciclo) {
+        $mainEntry = DB::transaction(function () use ($request, $validated, $ciclo, $sectionId) {
             $entry = Entry::create([
                 'user_id' => Auth::id(),
                 'ciclo_id' => $ciclo->id,
-                'section_id' => $request->section_ids[0] 
+                'section_id' => $sectionId,
             ]);
 
             $this->surveyService->saveAnswers($entry, $validated, $request);
@@ -85,8 +90,7 @@ class AnswerController extends Controller
      */
     public function show($id)
     {
-
-        $seccion = Sections::with('questions')->where('id', $id)->first();
+        $seccion = $this->seccionDelSistema($id);
 
         return view('respuestas.create', compact('seccion'));
     }
@@ -96,40 +100,48 @@ class AnswerController extends Controller
      */
     public function edit($id)
     {
-        $entry = Entry::with(['answers.question', 'answers'])->findOrFail($id);
+        $entry = Entry::with('answers.question')->findOrFail($id);
 
-        if ($entry->user_id !== Auth::id() && !Auth::user()->hasRole('admin')) {
+        if ($entry->user_id !== Auth::id() && ! Auth::user()->hasRole('admin')) {
             abort(403, 'No tienes permiso para editar este registro.');
         }
 
-        if (!$entry->is_editable) {
+        if (! $entry->is_editable) {
             return redirect()->route('dashboard')->with('error', 'Este formulario ya fue enviado.');
         }
 
-        $firstAnswer = $entry->answers->first();
-        $sectionId = $firstAnswer ? $firstAnswer->question->section_id : null;
+        // La sección está en el registro; la primera respuesta solo sirve para registros antiguos.
+        $sectionId = $entry->section_id ?? $entry->answers->first()?->question?->section_id;
 
-        if (!$sectionId) {
+        if (! $sectionId) {
             return back()->with('error', 'Registro corrupto o vacío');
         }
 
-        $seccionesProhibidas = Sections::where('investigacion', true)->pluck('id')->all();
+        // Específico de esta aplicación (SIA): excluye lo que pertenece a Investigación.
+        // Cuando verifiques que ninguna sección de Investigación quedó también en SIA,
+        // puedes quitar esto y dejar solo forSistema() + SistemaFilter.
+        $seccionesProhibidas = Sections::forSistema('investigacion')->pluck('id')->all();
 
-        $seccion = Sections::where('investigacion', false)
+        $seccion = Sections::forSistema(Sistema::slugActual())
+            ->notInSistema('investigacion')
             ->with([
-                'questions' => fn($q) => $q
+                'questions' => fn ($q) => $q
                     ->where(
-                        fn($q) => $q
+                        fn ($q) => $q
                             ->where('type', '!=', 'sub_form')
                             ->orWhereNotIn('options->target_section_id', $seccionesProhibidas)
                     )
                     ->orderBy('sort_order')
             ])
             ->findOrFail($sectionId);
+
+        $seccion->setRelation('questions', $this->sistemaFilter->questions($seccion->questions));
+
         $existingAnswers = $entry->answers->pluck('value_text', 'question_id')->toArray();
 
         return view('respuestas.edit', compact('entry', 'seccion', 'existingAnswers'));
     }
+
     /**
      * Update the specified resource in storage.
      */
@@ -137,11 +149,11 @@ class AnswerController extends Controller
     {
         $entry = Entry::findOrFail($id);
 
-        if ($entry->user_id !== Auth::id() && !Auth::user()->hasRole('admin')) {
+        if ($entry->user_id !== Auth::id() && ! Auth::user()->hasRole('admin')) {
             abort(403, 'No tienes permiso para editar este registro.');
         }
 
-        if (!$entry->is_editable) {
+        if (! $entry->is_editable) {
             return redirect()->route('dashboard')->with('error', 'Este formulario ya fue enviado.');
         }
 
@@ -160,44 +172,59 @@ class AnswerController extends Controller
     {
         $entry = Entry::findOrFail($id);
 
-        if ($entry->user_id !== Auth::id() && !Auth::user()->hasRole('admin')) {
+        if ($entry->user_id !== Auth::id() && ! Auth::user()->hasRole('admin')) {
             abort(403, 'No tienes permiso para eliminar este registro.');
         }
 
-        if (!$entry->is_editable && !Auth::user()->hasRole('admin')) {
+        if (! $entry->is_editable && ! Auth::user()->hasRole('admin')) {
             return redirect()->route('dashboard')->with('error', 'Este formulario ya fue enviado.');
         }
 
+        // Los sub-formularios se borran con el registro (lo hace el evento deleting de Entry).
         $entry->delete();
 
         return redirect()->route('dashboard')->with('success', 'Formulario eliminado con éxito.');
     }
+
     public function imprimir($id)
     {
-        // 1. Cargamos los datos exactamente igual que en tu vista web
         $entry = Entry::with('answers')->findOrFail($id);
 
-        if ($entry->user_id !== Auth::user()->id) {
+        if ((int) $entry->user_id !== (int) Auth::id() && ! Auth::user()->hasRole('admin')) {
             abort(403, 'No tienes permiso para imprimir este registro.');
         }
-        $idSecion = ($entry->answers->first()->question->section_id);
 
-        $seccion = \App\Models\Sections::with([
-            'questions' => function ($q) {
-                $q->orderBy('sort_order'); // Asegurar orden correcto
-            }
-        ])->where('id', $idSecion)->orderBy('sort_order')->first();
+        $sectionId = $entry->section_id ?? $entry->answers->first()?->question?->section_id;
+
+        abort_unless($sectionId, 404, 'El registro no tiene respuestas.');
+
+        // La relación questions() ya viene ordenada por sort_order.
+        $seccion = Sections::with('questions')->findOrFail($sectionId);
+        $seccion->setRelation('questions', $this->sistemaFilter->questions($seccion->questions));
 
         $answersMap = $entry->answers->keyBy('question_id');
 
-        // 2. Generamos el PDF apuntando a una vista nueva y exclusiva para impresión
         $pdf = Pdf::loadView('entries.pdf', [
             'entry' => $entry,
             'seccion' => $seccion,
             'answersMap' => $answersMap,
         ]);
 
-        // 3. Devolvemos el archivo para que el navegador lo descargue
         return $pdf->stream('formulario_' . $entry->id . '.pdf');
+    }
+
+    /**
+     * Sección con sus preguntas, solo si pertenece al sistema de esta aplicación
+     * y sin los sub-formularios que no están disponibles en él.
+     */
+    private function seccionDelSistema($id): Sections
+    {
+        $seccion = Sections::forSistema(Sistema::slugActual())
+            ->with('questions')
+            ->findOrFail($id);
+
+        $seccion->setRelation('questions', $this->sistemaFilter->questions($seccion->questions));
+
+        return $seccion;
     }
 }

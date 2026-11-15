@@ -25,6 +25,12 @@ class SectionsForm
     {
         return $schema->components([
             TextInput::make('title')->required()->label('Título'),
+            Select::make('sistemas')
+                ->label('Sistemas donde aparece')
+                ->relationship('sistemas', 'nombre')
+                ->multiple()
+                ->preload()
+                ->required(),
             TextInput::make('description')->label('Descripción'),
             ToggleButtons::make('investigacion')
                 ->label('Compartir con Investigación?')->required()

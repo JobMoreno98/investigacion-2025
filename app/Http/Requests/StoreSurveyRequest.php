@@ -37,9 +37,10 @@ class StoreSurveyRequest extends FormRequest
         }
 
         $questions = Questions::whereIn('section_id', $targetSections)->get();
-
+        $questions = app(\App\Services\SistemaFilter::class)->questions($questions);
         // Obtener el ID del entry principal para ignorar en reglas unique (modo edición)
         $entryRouteParam = $this->route('answer') ?? $this->route('id') ?? $this->route('proyecto');
+
         $mainEntryId = ($entryRouteParam instanceof \Illuminate\Database\Eloquent\Model)
             ? $entryRouteParam->id
             : $entryRouteParam;

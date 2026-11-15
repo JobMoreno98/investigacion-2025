@@ -2,7 +2,7 @@
 
 namespace App\Models\Concerns;
 
-use App\Models\Sistema;
+use App\Models\Sistemas;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
@@ -21,7 +21,7 @@ trait HasSistemas
 
     public function sistemas(): BelongsToMany
     {
-        return $this->belongsToMany(Sistema::class, $this->sistemaPivotTable(), $this->sistemaPivotKey(), 'sistema_id');
+        return $this->belongsToMany(Sistemas::class, $this->sistemaPivotTable(), $this->sistemaPivotKey(), 'sistema_id');
     }
 
     /** Registros que pertenecen a alguno de los sistemas indicados (slug o lista de slugs). */
@@ -40,7 +40,7 @@ trait HasSistemas
     public function syncSistemas(array $slugs): void
     {
         $this->sistemas()->sync(
-            Sistema::query()->whereIn('slug', $slugs)->pluck('id')->all()
+            Sistemas::query()->whereIn('slug', $slugs)->pluck('id')->all()
         );
     }
 
