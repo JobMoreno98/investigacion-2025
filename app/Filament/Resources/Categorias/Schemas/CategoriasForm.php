@@ -16,11 +16,9 @@ class CategoriasForm
                 TextInput::make('titulo')->required(),
                 TextInput::make('descripcion'),
                 Select::make('sistemas')
-                    ->label('Sistemas donde aparece')
+                    ->label('Sistemas')
                     ->relationship('sistemas', 'nombre')
-                    ->multiple()
-                    ->preload()
-                    ->required(),
+                    ->multiple()->preload()->required(),
             ]);
     }
 }

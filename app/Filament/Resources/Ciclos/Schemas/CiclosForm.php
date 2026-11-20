@@ -18,11 +18,9 @@ class CiclosForm
                 DatePicker::make('inicio')->required(),
                 DatePicker::make('fin')->required(),
                 Select::make('sistemas')
-                    ->label('Sistemas donde aparece')
+                    ->label('Sistemas')
                     ->relationship('sistemas', 'nombre')
-                    ->multiple()
-                    ->preload()
-                    ->required(),
+                    ->multiple()->preload()->required(),
 
                 ToggleButtons::make('activo')
                     ->label('Activo')->boolean()->default(true)->required()

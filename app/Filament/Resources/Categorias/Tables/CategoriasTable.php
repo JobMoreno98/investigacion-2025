@@ -15,6 +15,7 @@ class CategoriasTable
         return $table
             ->columns([
                 TextColumn::make('titulo')->searchable(),
+                TextColumn::make('sistemas.nombre')->label('Sistemas')->badge(),
             ])
             ->filters([
                 //
