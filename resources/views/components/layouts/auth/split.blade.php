@@ -44,7 +44,7 @@
             {{-- Espaciador superior para centrar verticalmente en pantallas grandes --}}
             <div class="hidden lg:block"></div>
 
-            <div class="mx-auto flex w-full flex-col justify-center space-y-8 sm:w-[400px]">
+            <div class="m-auto flex w-full flex-col justify-center space-y-8 sm:w-[400px]">
 
                 <div class="flex flex-col items-center lg:hidden">
                     <a href="{{ route('home') }}"
