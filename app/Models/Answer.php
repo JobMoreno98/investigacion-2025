@@ -19,7 +19,7 @@ class Answer extends Model
     }
     public function getFormattedValueAttribute()
     {
-        $val = $this->value;
+        $val = $this->value_text;
         
         if ($val === null || $val === '') {
             return '---';

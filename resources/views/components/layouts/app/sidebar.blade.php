@@ -26,15 +26,16 @@
     <flux:sidebar sticky stashable
         x-bind:class="showSidebar ? 'lg:!w-72 lg:opacity-100' :
             'lg:!w-0 lg:!min-w-0 lg:!border-transparent lg:opacity-0 lg:-translate-x-full'"
-        class="transition-all duration-300 ease-in-out lg:overflow-hidden border-e border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900">
+        class="dark transition-all duration-300 ease-in-out lg:overflow-hidden border-e border-indigo-900 bg-indigo-950 text-white">
 
-        <flux:sidebar.toggle class="lg:hidden" icon="x-mark" />
+        <flux:sidebar.toggle class="lg:hidden text-white" icon="x-mark" />
 
-        <a href="{{ route('dashboard') }}" class="me-5 flex items-center space-x-2 rtl:space-x-reverse" wire:navigate>
-            <x-app-logo />
+        {{-- Contenedor del logo blanco con espacio y línea sutil inferior --}}
+        <a href="{{ route('dashboard') }}" class="flex items-center justify-center py-2" wire:navigate>
+            <x-app-logo class="h-14 w-auto" />
         </a>
 
-        <flux:navlist>
+        <flux:navlist class="text-indigo-100">
             <livewire:navigation-bar />
         </flux:navlist>
 
@@ -52,7 +53,7 @@
                         <div class="flex items-center gap-2 px-1 py-1.5 text-start text-sm">
                             <span class="relative flex h-8 w-8 shrink-0 overflow-hidden rounded-lg">
                                 <span
-                                    class="flex h-full w-full items-center justify-center rounded-lg bg-neutral-200 text-black dark:bg-neutral-700 dark:text-white">
+                                    class="flex h-full w-full items-center justify-center rounded-lg bg-indigo-600 text-white font-semibold">
                                     {{ auth()->user()->initials() }}
                                 </span>
                             </span>

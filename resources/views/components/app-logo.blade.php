@@ -1,6 +1,5 @@
-<div class="flex aspect-square size-8 items-center justify-center rounded-md bg-accent-content text-accent-foreground">
-    <x-app-logo-icon class="size-5 fill-current text-white dark:text-black" />
+@props(['class' => 'h-12 w-auto'])
+
+<div {{ $attributes->merge(['class' => 'flex items-center justify-center']) }}>
+    <x-app-logo-icon class="{{ $class }}" />
 </div>
-<span>
-    SIA
-</span>
