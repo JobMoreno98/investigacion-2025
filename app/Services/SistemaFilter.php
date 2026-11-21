@@ -3,7 +3,7 @@
 namespace App\Services;
 
 use App\Models\Sections;
-use App\Models\Sistema;
+use App\Models\Sistemas;
 use Illuminate\Support\Collection;
 
 /**
@@ -26,7 +26,7 @@ class SistemaFilter
      */
     public function questions(Collection $questions, ?string $sistema = null): Collection
     {
-        $sistema ??= Sistema::slugActual();
+        $sistema ??= Sistemas::slugActual();
 
         $targets = $questions
             ->where('type', 'sub_form')
