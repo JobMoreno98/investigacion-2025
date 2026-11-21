@@ -48,6 +48,55 @@ class SiaDiagnostico extends Command
             ->filter(fn ($ciclo) => empty($sistemasDeCiclo[$ciclo->id]))
             ->map(fn ($ciclo) => "#{$ciclo->id} ({$ciclo->inicio} → {$ciclo->fin})"));
 
+        // 1b. Secciones en un sistema donde su categoría NO está: un menú armado desde las
+        // secciones mostraría esa categoría en un sistema que no la comparte.
+        $categoriaDeSeccion = DB::table('sections')->whereNull('deleted_at')->pluck('categoria_id', 'id');
+        $categoriaFueraDeSistema = collect();
+
+        foreach ($secciones as $id => $titulo) {
+            $categoriaId = $categoriaDeSeccion[$id] ?? null;
+            $faltan = array_diff($sistemasDeSeccion[$id] ?? [], $sistemasDeCategoria[$categoriaId] ?? []);
+
+            if ($faltan) {
+                $nombres = collect($faltan)->map(fn ($sistemaId) => $slugs[$sistemaId] ?? $sistemaId)->implode(', ');
+                $categoria = $categorias[$categoriaId] ?? '¿sin categoría?';
+                $categoriaFueraDeSistema->push("sección #{$id} «{$titulo}» está en [{$nombres}] pero su categoría «{$categoria}» no");
+            }
+        }
+
+        $this->revisar('error', 'Secciones asignadas a un sistema donde su categoría no está', $categoriaFueraDeSistema);
+
+        // 1c. "Datos Generales" debe verse en TODOS los sistemas activos: sin ella el usuario no puede
+        // actualizar su perfil y el menú le oculta el resto de las categorías.
+        $datosGenerales = DB::table('categorias')
+            ->where('slug', 'datos-generales')
+            ->orWhere('titulo', 'Datos Generales')
+            ->first(['id']);
+        $faltaDatosGenerales = collect();
+
+        if (! $datosGenerales) {
+            $faltaDatosGenerales->push('no existe la categoría «Datos Generales»');
+        } else {
+            $seccionesActivas = DB::table('sections')
+                ->whereNull('deleted_at')->where('is_active', 1)
+                ->where('categoria_id', $datosGenerales->id)
+                ->pluck('id');
+
+            foreach (DB::table('sistemas')->where('activo', 1)->pluck('slug', 'id') as $sistemaId => $slugSistema) {
+                $categoriaEnSistema = in_array($sistemaId, $sistemasDeCategoria[$datosGenerales->id] ?? [], true);
+                $seccionEnSistema = $seccionesActivas->contains(
+                    fn ($id) => in_array($sistemaId, $sistemasDeSeccion[$id] ?? [], true)
+                );
+
+                if (! $categoriaEnSistema || ! $seccionEnSistema) {
+                    $motivo = ! $categoriaEnSistema ? 'la categoría no está asignada' : 'ninguna de sus secciones activas está asignada';
+                    $faltaDatosGenerales->push("sistema «{$slugSistema}»: {$motivo}");
+                }
+            }
+        }
+
+        $this->revisar('error', '«Datos Generales» no disponible en algún sistema activo', $faltaDatosGenerales);
+
         // 2. Sub-formularios
         $destinoInexistente = collect();
         $noEnTodos = collect();

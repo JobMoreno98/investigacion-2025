@@ -16,4 +16,9 @@ class EditCiclos extends EditRecord
             DeleteAction::make(),
         ];
     }
+    protected function afterSave(): void   // en la de creación: afterCreate()
+    {
+        // Puente de compatibilidad: copia los slugs del pivote a la columna JSON heredada.
+        $this->record->forceFill(['sistemas' => $this->record->sistemas()->pluck('slug')->all()])->saveQuietly();
+    }
 }

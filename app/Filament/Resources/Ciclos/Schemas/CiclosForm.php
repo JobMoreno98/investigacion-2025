@@ -16,16 +16,18 @@ class CiclosForm
             ->components([
                 TextInput::make('nombre')->required(),
                 DatePicker::make('inicio')->required(),
-                DatePicker::make('fin')->required(),
-                Select::make('sistemas')
+                DatePicker::make('fin')->required()->afterOrEqual('inicio'),
+
+                // Se usa sistemasPivot (alias de sistemas()) porque la columna heredada ciclos.sistemas
+                // tiene el mismo nombre que la relación y confunde a Filament.
+                Select::make('sistemasPivot')
                     ->label('Sistemas')
-                    ->relationship('sistemas', 'nombre')
+                    ->relationship('sistemasPivot', 'nombre')
                     ->multiple()->preload()->required(),
 
                 ToggleButtons::make('activo')
                     ->label('Activo')->boolean()->default(true)->required()
                     ->inline(),
-
             ]);
     }
 }
